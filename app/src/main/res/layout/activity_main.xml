@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    tools:context=".MainActivity">
+
+    <FrameLayout
+        android:id="@+id/frameLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+<!--        <ImageView-->
+<!--            android:id="@+id/imageView"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:src="@drawable/test"-->
+<!--            android:scaleType="centerInside"/>-->
+<!--            android:layout_gravity="center"-->
+
+        <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+            android:id="@+id/imageView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/test"
+            android:layout_gravity="center"/>
+
+    </FrameLayout>
+
+    <com.nambimobile.widgets.efab.ExpandableFabLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- The next 3 Views will only display in landscape orientation -->
+        <com.nambimobile.widgets.efab.Overlay
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:overlay_orientation="landscape"/>
+
+        <com.nambimobile.widgets.efab.ExpandableFab
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_gravity="end|bottom"
+            app:efab_orientation="landscape"/>
+
+        <com.nambimobile.widgets.efab.FabOption
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:fab_orientation="landscape"
+            app:label_text="도면"
+            android:src="@android:drawable/ic_dialog_map"
+            android:onClick="onClickLandscapeOption1"/>
+
+        <com.nambimobile.widgets.efab.FabOption
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:fab_orientation="landscape"
+            app:label_text="CSV 파일"
+            android:src="@android:drawable/ic_menu_share"
+            android:onClick="onClickLandscapeOption2"/>
+
+        <com.nambimobile.widgets.efab.FabOption
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:fab_orientation="landscape"
+            app:label_text="아이콘 지우기"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:onClick="onClickLandscapeOption3"/>
+
+    </com.nambimobile.widgets.efab.ExpandableFabLayout>
+
+    <TextView
+        android:id="@+id/nfcTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/black"
+        android:textSize="24sp"
+        android:layout_margin="16dp"
+        android:gravity="left|top"
+        android:text="===="/>
+
+<!--    <com.google.android.material.floatingactionbutton.FloatingActionButton-->
+<!--        android:id="@+id/fabtn"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_margin="16dp" />-->
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left|bottom"
+        android:src="@android:drawable/ic_lock_lock"
+        android:layout_margin="16dp" />
+
+</FrameLayout>
