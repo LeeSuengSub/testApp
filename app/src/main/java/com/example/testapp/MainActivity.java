@@ -4,6 +4,9 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.PointF;
 import android.nfc.FormatException;
 import android.nfc.NdefMessage;
@@ -12,6 +15,7 @@ import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -26,6 +30,10 @@ import com.davemorrissey.labs.subscaleview.ImageSource;
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -44,6 +52,9 @@ public class MainActivity extends AppCompatActivity{
     private boolean isCheck = false; //설정 잠금.
     private NfcAdapter nfcAdapter; //NFC
 
+    private Bitmap currentBitmap;
+    private Paint paint;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +66,11 @@ public class MainActivity extends AppCompatActivity{
 //        imageView = findViewById(R.id.imageView);
         scaleView = findViewById(R.id.imageView);
 
-        scaleView.setImage(ImageSource.resource(R.drawable.test));
+        // 원본 이미지 로드
+        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test);
+
+        // 원본 이미지를 화면에 표시합니다.
+        scaleView.setImage(ImageSource.bitmap(currentBitmap));
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
@@ -80,30 +95,27 @@ public class MainActivity extends AppCompatActivity{
         });
 
 //        scaleView.setOnTouchListener((view, motionEvent) -> {
-//            if(!isCheck){
-//                scaleGestureDetector.onTouchEvent(motionEvent);
-//            }
-//            if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
-//                PointF imageCoord = new PointF(motionEvent.getX(), motionEvent.getY());
-//                if(isCheck) {
-//                    drawIconOnImage(imageCoord);
-//                }
-//            }
-//            return true;
-//        });
-
-//        scaleView.setOnTouchListener((view, motionEvent) -> {
-//            if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
+//            if (isCheck && motionEvent.getAction() == MotionEvent.ACTION_UP) {
 //                // 터치 이벤트가 끝났을 때
 //                PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
 //                PointF imageCoord = scaleView.viewToSourceCoord(viewCoord);
-//                if(isCheck) {
-//                    // 아이콘 그리기 동작을 수행
-//                    drawIconOnImage(imageCoord); // 화면 좌표를 사용하여 아이콘 그리기
-//                }
+//
+//                // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
+//                float currentScale = scaleView.getScale();
+//                PointF currentCenter = scaleView.getCenter();
+//
+//                // 확대/축소를 비활성화합니다.
+//                scaleView.setZoomEnabled(false);
+//
+//                // 중심 좌표를 다시 설정합니다.
+//                scaleView.setScaleAndCenter(currentScale, currentCenter);
+//
+//                // 아이콘 그리기 동작을 수행
+//                drawIconOnImage(imageCoord); // 화면 좌표를 사용하여 아이콘 그리기
 //            }
 //            return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
 //        });
+        readCsvAndDrawIcons();
 
         scaleView.setOnTouchListener((view, motionEvent) -> {
             if (isCheck && motionEvent.getAction() == MotionEvent.ACTION_UP) {
@@ -111,24 +123,25 @@ public class MainActivity extends AppCompatActivity{
                 PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
                 PointF imageCoord = scaleView.viewToSourceCoord(viewCoord);
 
-                // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
-                float currentScale = scaleView.getScale();
-                PointF currentCenter = scaleView.getCenter();
-
-                // 확대/축소를 비활성화합니다.
-                scaleView.setZoomEnabled(false);
-
-                // 중심 좌표를 다시 설정합니다.
-                scaleView.setScaleAndCenter(currentScale, currentCenter);
-
                 // 아이콘 그리기 동작을 수행
-                drawIconOnImage(imageCoord); // 화면 좌표를 사용하여 아이콘 그리기
+//                drawIconOnImage(imageCoord); // 화면 좌표를 사용하여 아이콘 그리기
+                drawCircleOnImage(imageCoord); // 화면 좌표를 사용하여 원 그리기
+                // 좌표를 CSV파일에 저장
+                try {
+                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    File csvFile = new File(dir, "coordinates.csv");
+                    FileWriter writer = new FileWriter(csvFile, true); // true for append mode
+                    writer.append(imageCoord.x + "," + imageCoord.y + "\n");
+                    writer.flush();
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
         });
 
-
-    }
+    }//onCreate
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         private static final float MIN_SCALE_FACTOR = 1.0f; // 최소 스케일링 팩터
@@ -216,39 +229,168 @@ public class MainActivity extends AppCompatActivity{
     }
 
     public void onClickLandscapeOption3(View view) {
-        for (int i = frameLayout.getChildCount() - 1; i >= 0; i--) {
-            View child = frameLayout.getChildAt(i);
-            if (child instanceof ImageView && child != imageView) {
-                frameLayout.removeViewAt(i);
-            }
-        }
+
     }
 
+    //이미지에 아이콘이 고정이 되지만 아이콘이 생성이 되지만 하나의 아이콘만 화면에 표시됨.
+    /*
     private void drawIconOnImage(PointF point) {
         // 아이콘 이미지 로드
         Bitmap iconBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.icon);
 
-        // 아이콘을 ImageView로 생성
-        ImageView iconView = new ImageView(this);
-        iconView.setImageBitmap(iconBitmap);
-
-        // 이미지의 좌표를 화면의 좌표로 변환
-        PointF viewCoord = scaleView.sourceToViewCoord(point);
-
-        // sourceToViewCoord가 null을 반환하는 경우를 처리
-        if (viewCoord == null) {
-            // 아이콘을 화면에 표시하지 않음
+        // iconBitmap이 null인지 확인
+        if (iconBitmap == null) {
+            // iconBitmap 초기화에 실패했을 때의 처리
+            Toast.makeText(this, "아이콘 이미지 로드에 실패했습니다.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 아이콘의 위치 설정
-        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(80, 80);
-        layoutParams.leftMargin = (int) viewCoord.x - layoutParams.width / 2;
-        layoutParams.topMargin = (int) viewCoord.y - layoutParams.height / 2;
+        // 아이콘 이미지 크기 조정
+        int iconWidth = 80; // 아이콘의 너비
+        int iconHeight = 80; // 아이콘의 높이
+        iconBitmap = Bitmap.createScaledBitmap(iconBitmap, iconWidth, iconHeight, false);
 
-        // FrameLayout에 아이콘 추가
-        frameLayout.addView(iconView, layoutParams);
+        // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
+        float currentScale = scaleView.getScale();
+        PointF currentCenter = scaleView.getCenter();
+
+        // 원본 이미지 로드
+        Bitmap finalIconBitmap = iconBitmap;
+        Glide.with(this)
+                .asBitmap()
+                .load(R.drawable.test)
+                .into(new CustomTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
+                        Bitmap mutableBitmap = resource.copy(Bitmap.Config.ARGB_8888, true);
+
+                        // 캔버스를 생성하고 원본 이미지를 그립니다.
+                        Canvas canvas = new Canvas(mutableBitmap);
+
+                        // 아이콘을 이미지의 좌표에 그립니다.
+                        canvas.drawBitmap(finalIconBitmap, point.x, point.y, null);
+
+                        // 수정된 이미지를 화면에 표시합니다.
+                        scaleView.setImage(ImageSource.bitmap(mutableBitmap));
+
+                        // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
+                        scaleView.setScaleAndCenter(currentScale, currentCenter);
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                    }
+                });
+    }
+     */
+    private void drawCircleOnImage(PointF point) {
+        // Paint 객체를 초기화합니다.
+        if (paint == null) {
+            paint = new Paint();
+            paint.setColor(Color.RED);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        Paint textPaint = new Paint();
+        textPaint.setColor(Color.BLACK);
+        textPaint.setTextSize(30);
+        textPaint.setStyle(Paint.Style.FILL);
+
+        // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
+        float currentScale = scaleView.getScale();
+        PointF currentCenter = scaleView.getCenter();
+
+        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
+        Bitmap mutableBitmap = currentBitmap.copy(Bitmap.Config.ARGB_8888, true);
+
+        // 캔버스를 생성하고 원본 이미지를 그립니다.
+        Canvas canvas = new Canvas(mutableBitmap);
+
+        // 좌표에 원을 그립니다.
+        canvas.drawCircle(point.x, point.y, 30, paint);
+
+        // 좌표에 텍스트를 그립니다.
+        canvas.drawText("Here", point.x, point.y, textPaint);
+
+        // 수정된 이미지를 화면에 표시합니다.
+        runOnUiThread(() -> {
+            scaleView.setImage(ImageSource.bitmap(mutableBitmap));
+
+            // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
+            scaleView.setScaleAndCenter(currentScale, currentCenter);
+        });
+
+        // 현재 이미지를 저장합니다.
+        currentBitmap = mutableBitmap;
     }
 
 
-}
+//    private void drawIconOnImage(PointF point) {
+//        // iconBitmap이 null인지 확인
+//        if (iconBitmap == null) {
+//            // iconBitmap 초기화에 실패했을 때의 처리
+//            Toast.makeText(this, "아이콘 이미지 로드에 실패했습니다.", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        // 아이콘 이미지 크기 조정
+//        int iconWidth = 80; // 아이콘의 너비
+//        int iconHeight = 80; // 아이콘의 높이
+//        Bitmap scaledIconBitmap = Bitmap.createScaledBitmap(iconBitmap, iconWidth, iconHeight, false);
+//
+//        // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
+//        float currentScale = scaleView.getScale();
+//        PointF currentCenter = scaleView.getCenter();
+//
+//        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
+//        if (mutableBitmap != null) {
+//            currentBitmap = mutableBitmap.copy(Bitmap.Config.ARGB_8888, true);// mutableBitmap을 currentBitmap에 복사
+//            mutableBitmap.recycle();//메모리 해제
+//            canvas = new Canvas(currentBitmap);
+//        }
+//        mutableBitmap = currentBitmap.copy(Bitmap.Config.ARGB_8888, true);
+//
+//        // 캔버스를 생성하고 원본 이미지를 그립니다.
+//        Canvas canvas = new Canvas(mutableBitmap);
+//
+//        // 아이콘을 이미지의 좌표에 그립니다.
+//        canvas.drawBitmap(scaledIconBitmap, point.x, point.y, null);
+//
+//        // 수정된 이미지를 화면에 표시합니다.
+//        scaleView.setImage(ImageSource.bitmap(mutableBitmap));
+//
+//        // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
+//        scaleView.setScaleAndCenter(currentScale, currentCenter);
+//
+//        // 현재 이미지를 저장합니다.
+//        currentBitmap = mutableBitmap;
+//    }
+
+    private void readCsvAndDrawIcons() {
+        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File csvFile = new File(dir, "coordinates.csv");
+
+        try {
+            FileReader fileReader = new FileReader(csvFile);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                String[] coords = line.split(",");
+                if (coords.length == 2) {
+                    float x = Float.parseFloat(coords[0]);
+                    float y = Float.parseFloat(coords[1]);
+                    PointF point = new PointF(x, y);
+                    drawCircleOnImage(point);
+                }
+            }
+
+            bufferedReader.close();
+            fileReader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+}// MainActivity.java
