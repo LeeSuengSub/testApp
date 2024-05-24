@@ -44,7 +44,6 @@ public class MainActivity extends AppCompatActivity{
     private boolean isCheck = false; //설정 잠금.
     private NfcAdapter nfcAdapter; //NFC
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,20 +79,6 @@ public class MainActivity extends AppCompatActivity{
             fab.setImageResource(isCheck ? android.R.drawable.ic_delete : android.R.drawable.ic_lock_lock);
         });
 
-
-//        frameLayout.setOnTouchListener((view, motionEvent) -> {
-//            if(!isCheck){
-//                scaleGestureDetector.onTouchEvent(motionEvent);
-//            }
-//            if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
-//                PointF imageCoord = new PointF(motionEvent.getX(), motionEvent.getY());
-//                if(isCheck) {
-//                    drawIconOnImage(imageCoord);
-//                }
-//            }
-//            return true;
-//        });
-
 //        scaleView.setOnTouchListener((view, motionEvent) -> {
 //            if(!isCheck){
 //                scaleGestureDetector.onTouchEvent(motionEvent);
@@ -107,32 +92,43 @@ public class MainActivity extends AppCompatActivity{
 //            return true;
 //        });
 
+//        scaleView.setOnTouchListener((view, motionEvent) -> {
+//            if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
+//                // 터치 이벤트가 끝났을 때
+//                PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
+//                PointF imageCoord = scaleView.viewToSourceCoord(viewCoord);
+//                if(isCheck) {
+//                    // 아이콘 그리기 동작을 수행
+//                    drawIconOnImage(imageCoord); // 화면 좌표를 사용하여 아이콘 그리기
+//                }
+//            }
+//            return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
+//        });
+
         scaleView.setOnTouchListener((view, motionEvent) -> {
-            if(!isCheck && scaleGestureDetector.onTouchEvent(motionEvent)) {
-                // 확대/축소 동작이 발생한 경우에만 해당
-                return true;
-            }
+            if (isCheck && motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                // 터치 이벤트가 끝났을 때
+                PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
+                PointF imageCoord = scaleView.viewToSourceCoord(viewCoord);
 
-            if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                PointF imageCoord = new PointF(motionEvent.getX(), motionEvent.getY());
-                if(isCheck) {
-                    drawIconOnImage(imageCoord);
-                }
+                // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
+                float currentScale = scaleView.getScale();
+                PointF currentCenter = scaleView.getCenter();
+
+                // 확대/축소를 비활성화합니다.
+                scaleView.setZoomEnabled(false);
+
+                // 중심 좌표를 다시 설정합니다.
+                scaleView.setScaleAndCenter(currentScale, currentCenter);
+
+                // 아이콘 그리기 동작을 수행
+                drawIconOnImage(imageCoord); // 화면 좌표를 사용하여 아이콘 그리기
             }
-            return false; // 확대/축소 동작이 아닌 경우에는 다른 터치 이벤트를 처리하기 위해 false 반환
+            return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
         });
-    }
 
-//    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-//        @Override
-//        public boolean onScale(ScaleGestureDetector detector) {
-//            scaleFactor *= detector.getScaleFactor();
-//            scaleFactor = Math.max(1f, Math.min(scaleFactor, 5.0f));
-//            imageView.setScaleX(scaleFactor);
-//            imageView.setScaleY(scaleFactor);
-//            return true;
-//        }
-//    }
+
+    }
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         private static final float MIN_SCALE_FACTOR = 1.0f; // 최소 스케일링 팩터
@@ -228,18 +224,31 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    private void drawIconOnImage(PointF point) { //화면에 아이콘 표시.
-        float iconWidth = iconBitmap.getWidth();
-        float iconHeight = iconBitmap.getHeight();
+    private void drawIconOnImage(PointF point) {
+        // 아이콘 이미지 로드
+        Bitmap iconBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.icon);
 
+        // 아이콘을 ImageView로 생성
         ImageView iconView = new ImageView(this);
         iconView.setImageBitmap(iconBitmap);
 
-        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(80, 80);
-        layoutParams.leftMargin = (int) (point.x - (iconHeight / 15));
-        layoutParams.topMargin = (int) (point.y - (iconWidth / 15));
+        // 이미지의 좌표를 화면의 좌표로 변환
+        PointF viewCoord = scaleView.sourceToViewCoord(point);
 
+        // sourceToViewCoord가 null을 반환하는 경우를 처리
+        if (viewCoord == null) {
+            // 아이콘을 화면에 표시하지 않음
+            return;
+        }
+
+        // 아이콘의 위치 설정
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(80, 80);
+        layoutParams.leftMargin = (int) viewCoord.x - layoutParams.width / 2;
+        layoutParams.topMargin = (int) viewCoord.y - layoutParams.height / 2;
+
+        // FrameLayout에 아이콘 추가
         frameLayout.addView(iconView, layoutParams);
     }
+
 
 }
