@@ -58,7 +58,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:fab_orientation="landscape"
-            app:label_text="아이콘 지우기"
+            app:label_text="아이콘 수정/삭제"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             android:onClick="onClickLandscapeOption3"/>
 
@@ -73,6 +73,18 @@
         android:layout_margin="16dp"
         android:gravity="left|top"
         android:text="===="/>
+
+    <ToggleButton
+        android:id="@+id/toggleButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="15dp"
+        android:textOn="삭제"
+        android:textOff="수정"
+        android:gravity="center"
+        android:visibility="invisible"
+        android:layout_gravity="end|top"
+        android:background="@drawable/radius"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab"

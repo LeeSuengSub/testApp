@@ -21,13 +21,14 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.davemorrissey.labs.subscaleview.ImageSource;
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
+import com.example.testapp.domain.Icon;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,12 +36,14 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity{
 
-    private static final String test = "test";
+    private static final String TEST = "test";
     private SubsamplingScaleImageView scaleView;
     private FloatingActionButton fab;
     private TextView nfcTitle;
@@ -49,10 +52,18 @@ public class MainActivity extends AppCompatActivity{
     private PendingIntent pendingIntent;
     private boolean isCheck = false; //설정 잠금.
     private NfcAdapter nfcAdapter; //NFC
+    private ToggleButton toggleButton;
+    private boolean selfCheck = false;
 
     private Bitmap currentBitmap;
     private Paint paint;
     private HashSet<String> readNfcContents = new HashSet<>();
+
+    //========
+    List<Icon> icons = new ArrayList<>();
+    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+    File csvFile = new File(dir, "nfcLight.csv");
+    //========
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,14 +73,14 @@ public class MainActivity extends AppCompatActivity{
         fab= findViewById(R.id.fab);
         nfcTitle = findViewById(R.id.nfcTitle);
         scaleView = findViewById(R.id.imageView);
+        toggleButton = findViewById(R.id.toggleButton);
 
         // 원본 이미지 로드
-        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test);
+        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test2);
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         // 원본 이미지를 화면에 표시합니다.
         scaleView.setImage(ImageSource.bitmap(currentBitmap));
-
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         if(nfcAdapter == null || !nfcAdapter.isEnabled()) {
             Toast.makeText(this, "NFC기능이 꺼져있습니다.", Toast.LENGTH_SHORT).show();
@@ -84,35 +95,13 @@ public class MainActivity extends AppCompatActivity{
             fab.setImageResource(isCheck ? android.R.drawable.ic_delete : android.R.drawable.ic_lock_lock);
         });
 
-        //CSV파일 읽어서 아이콘 그리기
-        readCsvAndDrawIcons();
+        // CSV 파일이 있다면, CSV 파일을 읽어서 아이콘을 그립니다.
+        if (csvFile.exists()) {
+            readCsvAndDrawIcons();
+            drawIcons();
+        }
 
-        /*
-        scaleView.setOnTouchListener((view, motionEvent) -> {
-            if (isCheck && motionEvent.getAction() == MotionEvent.ACTION_UP) {
-                // 터치 이벤트가 끝났을 때
-                PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
-                PointF imageCoord = scaleView.viewToSourceCoord(viewCoord);
-
-                // 아이콘 그리기 동작을 수행
-                drawCircleOnImage(imageCoord); // 화면 좌표를 사용하여 원 그리기
-
-                // 좌표를 CSV파일에 저장
-                try {
-                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    File csvFile = new File(dir, "coordinates.csv");
-                    FileWriter writer = new FileWriter(csvFile, true); // true for append mode
-                    writer.append(imageCoord.x + "," + imageCoord.y + "\n");
-                    writer.flush();
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
-        });
-
-         */
+        // isCheck가 true일때, 이미지를 터치하면 nfc태그의 내용과 좌표를 csv파일에 저장
         scaleView.setOnTouchListener((view, motionEvent) -> {
             if (isCheck && motionEvent.getAction() == MotionEvent.ACTION_UP) {
                 // 터치 이벤트가 끝났을 때
@@ -122,19 +111,45 @@ public class MainActivity extends AppCompatActivity{
                 // NFC 태그의 내용을 가져옵니다.
                 String nfcText = nfcTitle.getText().toString();
 
-//                if(nfcText.isEmpty() || nfcText.equals("====")) {
-//                    Toast.makeText(this, "NFC 태그를 인식해주세요.", Toast.LENGTH_SHORT).show();
-//                    return false;
-//                }
-                int x = (int) Math.floor(imageCoord.x);
-                int y = (int) Math.floor(imageCoord.y);
+                //테스트를 위한 코드
+                if(nfcText.equals("====")) {
+                    nfcText = TEST;
+                }
+
+                //NFC 태그의 내용이 없는 경우
+                if(nfcText.isEmpty() || nfcText.equals("====")) {
+                    Toast.makeText(this, "NFC 태그를 인식해주세요.", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+
                 // 아이콘 그리기 동작을 수행
                 drawCircleOnImage(imageCoord, nfcText); // 화면 좌표를 사용하여 원 그리기
 
+                int x = (int) Math.floor(imageCoord.x);
+                int y = (int) Math.floor(imageCoord.y);
+
+                /*// 터치한 위치에 있는 아이콘을 찾습니다.
+                Icon selectedIcon = null;
+                for (Icon icon : icons) {
+                    if (Math.abs(icon.point.x - imageCoord.x) < 30 && Math.abs(icon.point.y - imageCoord.y) < 30) {
+                        selectedIcon = icon;
+                        break;
+                    }
+                }
+
+                if (selectedIcon != null) {
+                    // 아이콘을 찾았다면, 아이콘의 속성을 수정합니다.
+                    // 여기서는 예시로 아이콘의 텍스트를 "Selected"로 변경하였습니다.
+                    selectedIcon.text = "Selected";
+
+                    // 아이콘의 속성을 수정한 후에는 화면을 다시 그려야 합니다.
+                    drawIcons();
+                }*/
+
                 // 좌표와 NFC 태그의 내용을 CSV파일에 저장
                 try {
-                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    File csvFile = new File(dir, "nfcLight.csv");
+                     dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                     csvFile = new File(dir, "nfcLight.csv");
                     FileWriter writer = new FileWriter(csvFile, true); // true for append mode
                     writer.append(nfcText + "," + x + "," + y + "\n");
                     writer.flush();
@@ -183,17 +198,6 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    /*
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        String nfcText = readNfcTag(intent);
-
-        nfcTitle.setText(nfcText);
-    }
-
-     */
-
     private String readNfcTag(Intent intent) {
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
             Ndef ndef = Ndef.get((Tag)intent.getParcelableExtra(NfcAdapter.EXTRA_TAG));
@@ -236,52 +240,10 @@ public class MainActivity extends AppCompatActivity{
     }
 
     public void onClickLandscapeOption3(View view) {
-        Snackbar.make(view,"Snackbar test",Snackbar.LENGTH_SHORT).show();
+//        Snackbar.make(view,"Snackbar test",Snackbar.LENGTH_SHORT).show();//Snackbar
+           selfCheck = selfCheck ? false : true;
+           toggleButton.setVisibility(selfCheck ? View.VISIBLE : View.INVISIBLE);
     }
-/*
-    private void drawCircleOnImage(PointF point) {
-
-        // Paint 객체를 초기화합니다.
-        if (paint == null) {
-            paint = new Paint();
-            paint.setColor(Color.RED);
-            paint.setStyle(Paint.Style.FILL);
-        }
-
-        Paint textPaint = new Paint();
-        textPaint.setColor(Color.BLACK);
-        textPaint.setTextSize(30);
-        textPaint.setStyle(Paint.Style.FILL);
-
-        // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
-        float currentScale = scaleView.getScale();
-        PointF currentCenter = scaleView.getCenter();
-
-        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
-        Bitmap mutableBitmap = currentBitmap.copy(Bitmap.Config.ARGB_8888, true);
-
-        // 캔버스를 생성하고 원본 이미지를 그립니다.
-        Canvas canvas = new Canvas(mutableBitmap);
-
-        // 좌표에 원을 그립니다.
-        canvas.drawCircle(point.x, point.y, 30, paint);
-
-        // 좌표에 텍스트를 그립니다.
-        canvas.drawText("Here", point.x, point.y, textPaint);
-
-        // 수정된 이미지를 화면에 표시합니다.
-        runOnUiThread(() -> {
-            scaleView.setImage(ImageSource.bitmap(mutableBitmap));
-
-            // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
-            scaleView.setScaleAndCenter(currentScale, currentCenter);
-        });
-
-        // 현재 이미지를 저장합니다.
-        currentBitmap = mutableBitmap;
-    }
-
- */
 
     private void drawCircleOnImage(PointF point, String text) {
         // Paint 객체를 초기화합니다.
@@ -336,7 +298,18 @@ public class MainActivity extends AppCompatActivity{
             return;
         }
 
+        if(readNfcContents.contains("====")) {
+            Toast.makeText(this, "이미 읽은 NFC 태그입니다.", Toast.LENGTH_SHORT).show();
+            nfcTitle.setText(TEST);
+            return;
+        }
+
         nfcTitle.setText(nfcText);
+
+        if(nfcTitle.equals("====")) {
+            nfcTitle.setText(TEST);
+            return;
+        }
 
         // 터치 이벤트가 끝났을 때
         PointF viewCoord = new PointF(scaleView.getWidth() / 2, scaleView.getHeight() / 2);
@@ -355,35 +328,6 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    /*
-    private void readCsvAndDrawIcons() {
-        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File csvFile = new File(dir, "coordinates.csv");
-
-        try {
-            FileReader fileReader = new FileReader(csvFile);
-            BufferedReader bufferedReader = new BufferedReader(fileReader);
-
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                String[] coords = line.split(",");
-                if (coords.length == 2) {
-                    float x = Float.parseFloat(coords[0]);
-                    float y = Float.parseFloat(coords[1]);
-                    PointF point = new PointF(x, y);
-                    drawCircleOnImage(point);
-                }
-            }
-
-            bufferedReader.close();
-            fileReader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-     */
-
     private void readCsvAndDrawIcons() {
         File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File csvFile = new File(dir, "nfcLight.csv");
@@ -400,7 +344,9 @@ public class MainActivity extends AppCompatActivity{
                     float x = Float.parseFloat(fields[1]);
                     float y = Float.parseFloat(fields[2]);
                     PointF point = new PointF(x, y);
-                    drawCircleOnImage(point, text);
+
+                    // 아이콘 객체를 생성하고 리스트에 추가합니다.
+                    icons.add(new Icon(point, text));
 
                     // NFC 태그의 내용을 HashSet에 추가합니다.
                     readNfcContents.add(text);
@@ -412,6 +358,49 @@ public class MainActivity extends AppCompatActivity{
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void drawIcons() {
+        // Paint 객체를 초기화합니다.
+        if (paint == null) {
+            paint = new Paint();
+            paint.setColor(Color.RED);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        Paint textPaint = new Paint();
+        textPaint.setColor(Color.BLACK);
+        textPaint.setTextSize(30);
+        textPaint.setStyle(Paint.Style.FILL);
+
+        // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
+        float currentScale = scaleView.getScale();
+        PointF currentCenter = scaleView.getCenter();
+
+        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
+        Bitmap mutableBitmap = currentBitmap.copy(Bitmap.Config.ARGB_8888, true);
+
+        // 캔버스를 생성하고 원본 이미지를 그립니다.
+        Canvas canvas = new Canvas(mutableBitmap);
+
+        for (Icon icon : icons) {
+            // 좌표에 원을 그립니다.
+            canvas.drawCircle(icon.point.x, icon.point.y, 30, paint);
+
+            // 좌표에 텍스트를 그립니다.
+            canvas.drawText(icon.text, icon.point.x, icon.point.y, textPaint);
+        }
+
+        // 수정된 이미지를 화면에 표시합니다.
+        runOnUiThread(() -> {
+            scaleView.setImage(ImageSource.bitmap(mutableBitmap));
+
+            // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
+            scaleView.setScaleAndCenter(currentScale, currentCenter);
+        });
+
+        // 현재 이미지를 저장합니다.
+        currentBitmap = mutableBitmap;
     }
 
 }// MainActivity.java
