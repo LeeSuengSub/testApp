@@ -58,9 +58,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:fab_orientation="landscape"
-            app:label_text="아이콘 수정/삭제"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:label_text="아이콘 수정"
+            android:src="@android:drawable/ic_menu_rotate"
             android:onClick="onClickLandscapeOption3"/>
+
+        <com.nambimobile.widgets.efab.FabOption
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:fab_orientation="landscape"
+            app:label_text="아이콘 삭제"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:onClick="onClickLandscapeOption4"/>
 
     </com.nambimobile.widgets.efab.ExpandableFabLayout>
 
@@ -79,8 +87,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="15dp"
-        android:textOn="삭제"
-        android:textOff="수정"
+        android:textOn="텍스트"
+        android:textOff="좌표"
         android:gravity="center"
         android:visibility="invisible"
         android:layout_gravity="end|top"
