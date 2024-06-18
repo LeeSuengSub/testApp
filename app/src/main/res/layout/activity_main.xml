@@ -72,13 +72,53 @@
 
     </com.nambimobile.widgets.efab.ExpandableFabLayout>
 
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/path"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/black"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_margin="16dp"
+        android:gravity="left|top"
+        android:text="path :"/>
+
+    <TextView
+        android:id="@+id/csvFileName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/black"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"
+        android:gravity="left|top"
+        android:text="nfcLight.csv"/>
+
+        <TextView
+            android:id="@+id/mapFileName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/black"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:gravity="left|top"
+            android:text=" / 용인 지하1층"/>
+
+    </LinearLayout>
+
     <TextView
         android:id="@+id/nfcTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@color/black"
-        android:textSize="24sp"
-        android:layout_margin="16dp"
+        android:textSize="30sp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginTop="30dp"
         android:gravity="left|top"
         android:text="===="/>
 
