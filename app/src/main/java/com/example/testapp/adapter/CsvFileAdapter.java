@@ -2,6 +2,7 @@ package com.example.testapp.adapter;
 
 import android.annotation.SuppressLint;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.databinding.DataBindingUtil;
@@ -17,9 +18,18 @@ public class CsvFileAdapter extends RecyclerView.Adapter<CsvFileAdapter.ViewHold
 
     private final List<CsvFile> csvFiles;
     private int selectedPosition = RecyclerView.NO_POSITION; // 선택된 아이템의 위치를 저장
+    private OnItemClickListener listener;
+
+    public interface OnItemClickListener {
+        void onItemClick(View view, int position);
+    }
 
     public CsvFileAdapter(List<CsvFile> csvFiles) {
         this.csvFiles = csvFiles;
+    }
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
     }
 
     @Override
@@ -47,15 +57,7 @@ public class CsvFileAdapter extends RecyclerView.Adapter<CsvFileAdapter.ViewHold
             holder.itemView.setBackgroundColor(holder.itemView.getContext().getColor(android.R.color.transparent));
         }
 
-        // 아이템 클릭 이벤트 처리
-        holder.itemView.setOnClickListener(v -> {
-            int previousSelectedPosition = selectedPosition;
-            selectedPosition = position;
-
-            // 선택 상태가 변경되면 이전 선택 아이템과 새 선택 아이템을 다시 바인딩
-            notifyItemChanged(previousSelectedPosition);
-            notifyItemChanged(selectedPosition);
-        });
+        // 아이템 클릭 이벤트 처리는 ViewHolder에서 수행
     }
 
     @Override
@@ -63,12 +65,23 @@ public class CsvFileAdapter extends RecyclerView.Adapter<CsvFileAdapter.ViewHold
         return csvFiles.size();
     }
 
-    static class ViewHolder extends RecyclerView.ViewHolder {
+    public class ViewHolder extends RecyclerView.ViewHolder {
         final ListviewCsvItemBinding binding;
 
         ViewHolder(ListviewCsvItemBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
+
+            // itemView에 클릭 리스너 설정
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int position = getAdapterPosition();
+                    if (listener != null && position != RecyclerView.NO_POSITION) {
+                        listener.onItemClick(v, position);
+                    }
+                }
+            });
         }
     }
 
