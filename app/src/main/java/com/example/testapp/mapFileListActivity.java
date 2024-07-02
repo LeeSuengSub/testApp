@@ -1,6 +1,7 @@
 package com.example.testapp;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -22,7 +23,7 @@ import java.util.List;
 public class mapFileListActivity extends AppCompatActivity {
 
     ViewDataBinding binding;
-    private static String path = "/storage/emulated/0/Android/data/com.example.testapp/files/map";
+    private static String path = "/storage/emulated/0/Android/data/com.example.testapp/files/map/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,10 +71,12 @@ public class mapFileListActivity extends AppCompatActivity {
                     // Get the selected item
                     MapFile selectedFile = mapFiles.get(position);
                     Log.d("SS1234", "Selected file: " + selectedFile.getMapFile());
+                    Uri selectedMapUri = Uri.parse(path+selectedFile.getMapFile().toString());
+                    Log.d("SS1234","selectedMapUri : " + selectedMapUri);
 
                     // Create an Intent to start MainActivity
                     Intent intent = new Intent(mapFileListActivity.this, MainActivity.class);
-
+                    intent.putExtra("mapPath",selectedMapUri);
                     Singleton singleton = Singleton.getInstance();
                     singleton.setSelectedMapFile(selectedFile.getMapFile());
 
