@@ -67,8 +67,6 @@ public class MainActivity extends AppCompatActivity{
     private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE =2;
     private static final int REQUEST_CODE_OPEN_DOCUMENT = 42;
     private static final String TEST = "test";
-    private static String csvListData = null;
-    private static String mapListData = null;
     private SubsamplingScaleImageView scaleView;
     private FloatingActionButton fab; //아이콘 배치 버튼
     private TextView nfcTitle;
@@ -100,7 +98,6 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         if (requestCode == 1 && resultCode == RESULT_OK) {
             String selectedMapFileName = data.getStringExtra("selectedMapFile");
             File mapFileDirectory = new File(getFilesDir(), "map");
@@ -129,11 +126,15 @@ public class MainActivity extends AppCompatActivity{
         checkAndRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
 
         // 원본 이미지 로드
-        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
+//        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         // 원본 이미지를 화면에 표시합니다.
-        scaleView.setImage(ImageSource.bitmap(currentBitmap));
+//        scaleView.setImage(ImageSource.bitmap(currentBitmap));
+
+        //지도 더블 탭 기능 막는 코드.
+        scaleView.setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER);
+        scaleView.setDoubleTapZoomDpi(0);
 
         //스마트폰에 NFC가 없거나 꺼져있는 경우
         if(nfcAdapter == null || !nfcAdapter.isEnabled()) {
@@ -250,7 +251,7 @@ public class MainActivity extends AppCompatActivity{
                 if (closestDistance < 150) {
                     // 수정할 내용을 적을 EditText
                     EditText editText = new EditText(MainActivity.this);
-                    // 수정할 내용의 길이 제한 5자릿수.(예: 12345
+                    // 수정할 내용의 길이 제한 5자릿수.(예: 12345)
                     InputFilter[] filters = new InputFilter[1];
                     filters[0] = new InputFilter.LengthFilter(5);
                     editText.setFilters(filters);
@@ -275,6 +276,7 @@ public class MainActivity extends AppCompatActivity{
                                         Toast.makeText(MainActivity.this, "수정할 내용을 입력해주세요", Toast.LENGTH_SHORT).show();
                                     } else {
                                         // EditText가 비어있지 않다면 AlertDialog를 닫습니다.
+                                        closestIcon.text = editText.getText().toString();
                                         dialog.dismiss();
                                     }
                                 }
@@ -305,9 +307,6 @@ public class MainActivity extends AppCompatActivity{
 
                 // 가장 가까운 아이콘이 선택 영역 내에 있다면, 그 아이콘의 텍스트를 수정합니다.
                 if (closestDistance < 100) {
-//                    closestIcon.text = "새로운 텍스트"; // 여기에 원하는 텍스트를 입력하세요.
-//                    drawIcons();
-
                     // 조건이 충족되면 다이얼로그를 띄웁니다.
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("삭제")
@@ -320,7 +319,8 @@ public class MainActivity extends AppCompatActivity{
 
                                     // CSV 파일을 다시 씁니다.
                                     try {
-                                        FileWriter writer = new FileWriter("nfcLight.csv", false); // false for overwrite mode
+//                                        FileWriter writer = new FileWriter("nfcLight.csv", false); // false for overwrite mode
+                                        FileWriter writer = new FileWriter(Singleton.getInstance().getSelectedCsvFile(), false); // false for overwrite mode
                                         for (Icon icon : icons) {
                                             writer.append(icon.text + "," + Math.round(icon.point.x) + "," + Math.round(icon.point.y) + "\n");
                                         }
@@ -620,7 +620,8 @@ public class MainActivity extends AppCompatActivity{
         // 좌표와 NFC의 내용을 CSV파일에 저장
         try {
             File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File csvFile = new File(dir, "nfcLight.csv");
+//            File csvFile = new File(dir, "nfcLight.csv");
+            File csvFile = new File(dir, Singleton.getInstance().getSelectedCsvFile());
             FileWriter writer = new FileWriter(csvFile, true); // true for append mode
             writer.append(nfcText + "," + imageCoord.x + "," + imageCoord.y + "\n");
             writer.flush();
