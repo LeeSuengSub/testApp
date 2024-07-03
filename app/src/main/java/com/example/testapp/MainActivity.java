@@ -4,9 +4,11 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -21,8 +23,11 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
+import android.provider.Settings;
 import android.text.InputFilter;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -35,9 +40,11 @@ import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import androidx.core.content.ContextCompat;
 import com.davemorrissey.labs.subscaleview.ImageSource;
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
 import com.example.testapp.domain.Icon;
@@ -63,10 +70,12 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity{
 
-    private static final String path = "/storage/emulated/0/Android/data/com.example.testapp/files/csv";
+    private String path = "/storage/emulated/0/Android/data/com.example.testapp/files/";
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE =2;
+    private static final int PICK_IMAGE_REQUEST = 1;
     private static final int REQUEST_PICK_IMAGE = 1;
+    private static final int STORAGE_PERMISSION_CODE = 2;
     private static final int REQUEST_CODE_OPEN_DOCUMENT = 42;
     private static final String TEST = "test";
     private ActivityResultLauncher<Intent> activityResultLauncher;
@@ -89,6 +98,8 @@ public class MainActivity extends AppCompatActivity{
     //========
     List<Icon> icons = new ArrayList<>();
     //========
+    // ActivityResultLauncher 선언
+    private ActivityResultLauncher<Intent> galleryLauncher;
 
     private void checkAndRequestPermission(String permission, int requestCode) {
         if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -102,28 +113,58 @@ public class MainActivity extends AppCompatActivity{
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == 1 && resultCode == RESULT_OK) {
-            String selectedMapFileName = data.getStringExtra("selectedMapFile");
-            File mapFileDirectory = new File(getFilesDir(), "map");
-            File mapFile = new File(mapFileDirectory, selectedMapFileName);
-
-            if (mapFile.exists()) {
-                scaleView.setImage(ImageSource.uri(Uri.fromFile(mapFile)));
-            }
-        }
-
         if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
             Uri selectedImageUri = data.getData();
-            if (selectedImageUri != null) {
-                // SubsamplingScaleImageView에 이미지 설정
-                try {
-                    scaleView.setImage(ImageSource.uri(selectedImageUri));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+            if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+                Uri imageUri = data.getData();
+                String imagePath = getRealPathFromURI(this, imageUri);
+                if (imagePath != null) {
+                    scaleView.setImage(ImageSource.uri(imagePath));
+                } else {
+                    Toast.makeText(this, "이미지 경로를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show();
                 }
             }
         }
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri imageUri = data.getData();
+            // 이미지 URI로 작업 수행 (예: 이미지 뷰에 설정)
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+//                scaleView.setImage();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri imageUri = data.getData();
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+                // 이미지 파일 경로를 직접 설정
+                scaleView.setImage(ImageSource.bitmap(bitmap));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private String getRealPathFromURI(Context context, Uri uri) {
+        String[] projection = {MediaStore.Images.Media.DATA};
+        Cursor cursor = null;
+        try {
+            cursor = context.getContentResolver().query(uri, projection, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                return cursor.getString(columnIndex);
+            }
+        } catch (Exception e) {
+            Log.e("1234", "Error getting real path from URI", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return null;
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -142,20 +183,56 @@ public class MainActivity extends AppCompatActivity{
         checkAndRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
         checkAndRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
 
-        Intent mainIntent = getIntent();
-        String mapPath = mainIntent.getStringExtra("mapPath");
-        Log.d("SS1234", mapPath);
+        // 권한 요청
+//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, STORAGE_PERMISSION_CODE);
+//        } else {
+//            openGallery();
+//        }
+        
+//        // 갤러리 앱을 호출하는 Intent 생성
+//        Intent gallaryIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+//        // 이미지 유형 설정
+//        gallaryIntent.setType("image/*");
+//        // Activity 실행 (이미지를 선택하는 결과를 반환)
+//        startActivityForResult(gallaryIntent, PICK_IMAGE_REQUEST);
 
-        if(mapPath != null) {
-            scaleView.setImage(ImageSource.asset(mapPath));
-        }
+        // 갤러리 인텐트를 처리하는 ActivityResultLauncher 초기화
+        galleryLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    Log.d("SS1234", "Activity result received");
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        Uri imageUri = result.getData().getData();
+                        if (imageUri != null) {
+                            Log.d("SS1234", "Selected image URI: " + imageUri.toString());
+                            try {
+                                scaleView.setImage(ImageSource.uri(imageUri));
+                            } catch (Exception e) {
+                                Log.e("SS1234", "Error setting image", e);
+                                Toast.makeText(this, "이미지를 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Log.d("SS1234", "Image URI is null");
+                            Toast.makeText(this, "선택한 이미지의 URI가 없습니다.", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Log.d("SS1234", "Image selection failed or canceled");
+                        Toast.makeText(this, "이미지 선택에 실패했습니다.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        saveFileToAppSpecificDirectory(this);
+        readFileFromAppSpecificDirectory(this);
+
+
 
         // 원본 이미지 로드
-//        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
+        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         // 원본 이미지를 화면에 표시합니다.
-//        scaleView.setImage(ImageSource.bitmap(currentBitmap));
+        scaleView.setImage(ImageSource.bitmap(currentBitmap));
 
         //지도 더블 탭 기능 막는 코드.
         scaleView.setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER);
@@ -389,17 +466,60 @@ public class MainActivity extends AppCompatActivity{
                 break;
             }
         }
+
+//        if (requestCode == STORAGE_PERMISSION_CODE) {
+//            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                openGallery();
+//            } else {
+//                Toast.makeText(this, "권한이 거부되었습니다.", Toast.LENGTH_SHORT).show();
+//            }
+//        }
     }
 
-    private void handleImageUri(Uri selectedImageUri) {
-        try{
-          scaleView.setImage(ImageSource.uri(selectedImageUri));
-        }catch (Exception e){
+//    private void handleImageUri(Uri selectedImageUri) {
+//        try{
+//          scaleView.setImage(ImageSource.uri(selectedImageUri));
+//        }catch (Exception e){
+//            e.printStackTrace();
+//            Log.d("SS1234","Failed to load image: " + e.getMessage());
+//            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+//        }
+//    }
+
+    // 파일을 앱 전용 디렉토리에 저장하기
+    public void saveFileToAppSpecificDirectory(Context context) {
+        String filename = "example.txt";
+        String fileContents = "Hello, World!";
+        FileOutputStream fos;
+        try {
+            fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
+            fos.write(fileContents.getBytes());
+            fos.close();
+        } catch (IOException e) {
             e.printStackTrace();
-            Log.d("SS1234","Failed to load image: " + e.getMessage());
-            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
         }
     }
+
+    // 앱 전용 디렉토리에서 파일 읽기
+    public String readFileFromAppSpecificDirectory(Context context) {
+        String filename = "example.txt";
+        FileInputStream fis;
+        StringBuilder stringBuilder = new StringBuilder();
+        try {
+            fis = context.openFileInput(filename);
+            InputStreamReader inputStreamReader = new InputStreamReader(fis);
+            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                stringBuilder.append(line);
+            }
+            fis.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return stringBuilder.toString();
+    }
+
 
     private void saveIconsToCsv() {
 
@@ -541,13 +661,9 @@ public class MainActivity extends AppCompatActivity{
     //지도 파일 선택창
     public void onClickLandscapeOption1(View view) {
 //        Intent intent = new Intent(MainActivity.this, mapFileListActivity.class);
-//        startActivity(intent);
+//        startActivityForResult(intent,REQUEST_PICK_IMAGE);
 
-//        Intent intent = new Intent(MainActivity.this, mapFileListActivity.class);
-//        activityResultLauncher.launch(intent);
-
-        Intent intent = new Intent(MainActivity.this, mapFileListActivity.class);
-        startActivityForResult(intent,REQUEST_PICK_IMAGE);
+        openGallery();
     }
 
     //CSV 파일 선택창
@@ -720,6 +836,19 @@ public class MainActivity extends AppCompatActivity{
     private String getCurrentTimeStamp() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
         return sdf.format(new Date());
+    }
+
+    @SuppressLint("IntentReset")
+    private void openGallery() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            intent.setType("image/*");
+            galleryLauncher.launch(intent);
+            Log.d("SS1234", "Gallery intent launched");
+        } catch (Exception e) {
+            Log.e("SS1234", "Error launching gallery intent", e);
+            Toast.makeText(this, "갤러리를 여는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
+        }
     }
 
 }// MainActivity.java
