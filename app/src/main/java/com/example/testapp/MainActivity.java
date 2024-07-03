@@ -28,6 +28,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.text.InputFilter;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -41,6 +42,7 @@ import android.widget.ToggleButton;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -74,7 +76,9 @@ public class MainActivity extends AppCompatActivity{
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE =2;
     private static final int PICK_IMAGE_REQUEST = 1;
-    private static final int REQUEST_PICK_IMAGE = 1;
+    private static final int REQUEST_IMAGE_PICK = 1;
+    private static final int REQUEST_PERMISSION = 100;
+    private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final int STORAGE_PERMISSION_CODE = 2;
     private static final int REQUEST_CODE_OPEN_DOCUMENT = 42;
     private static final String TEST = "test";
@@ -99,7 +103,7 @@ public class MainActivity extends AppCompatActivity{
     List<Icon> icons = new ArrayList<>();
     //========
     // ActivityResultLauncher 선언
-    private ActivityResultLauncher<Intent> galleryLauncher;
+//    private ActivityResultLauncher<Intent> galleryLauncher;
 
     private void checkAndRequestPermission(String permission, int requestCode) {
         if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -113,39 +117,45 @@ public class MainActivity extends AppCompatActivity{
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
-            Uri selectedImageUri = data.getData();
-            if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-                Uri imageUri = data.getData();
-                String imagePath = getRealPathFromURI(this, imageUri);
-                if (imagePath != null) {
-                    scaleView.setImage(ImageSource.uri(imagePath));
-                } else {
-                    Toast.makeText(this, "이미지 경로를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri imageUri = data.getData();
-            // 이미지 URI로 작업 수행 (예: 이미지 뷰에 설정)
-            try {
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-//                scaleView.setImage();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
 
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri imageUri = data.getData();
+//        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null) {
+//            Uri selectedImageUri = data.getData();
+//            if (selectedImageUri != null) {
+//                String imagePath = getPathFromUri(selectedImageUri);
+//                if (imagePath != null) {
+//                    scaleView.setImage(ImageSource.uri(imagePath));
+//                }
+//            }
+//        }
+
+        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null) {
             try {
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-                // 이미지 파일 경로를 직접 설정
-                scaleView.setImage(ImageSource.bitmap(bitmap));
-            } catch (IOException e) {
+                Uri selectedImageUri = data.getData();
+                if (selectedImageUri != null) {
+                    String imagePath = getPathFromUri(selectedImageUri);
+                    if (imagePath != null) {
+                        scaleView.setImage(ImageSource.uri(imagePath));
+                    } else {
+                        Toast.makeText(this, "이미지 경로를 얻을 수 없습니다.", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(this, "이미지를 선택하지 않았습니다.", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
                 e.printStackTrace();
+                Toast.makeText(this, "이미지 처리 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
             }
         }
+//        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+//            Uri imageUri = data.getData();
+//            try {
+//                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+//                // 이미지 파일 경로를 직접 설정
+//                scaleView.setImage(ImageSource.bitmap(bitmap));
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
     private String getRealPathFromURI(Context context, Uri uri) {
@@ -180,52 +190,53 @@ public class MainActivity extends AppCompatActivity{
         pathText = findViewById(R.id.pathContext);
 
         //권한 확인.
-        checkAndRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
-        checkAndRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+//        checkAndRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
+//        checkAndRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
 
-        // 권한 요청
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, STORAGE_PERMISSION_CODE);
-//        } else {
-//            openGallery();
-//        }
-        
-//        // 갤러리 앱을 호출하는 Intent 생성
-//        Intent gallaryIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-//        // 이미지 유형 설정
-//        gallaryIntent.setType("image/*");
-//        // Activity 실행 (이미지를 선택하는 결과를 반환)
-//        startActivityForResult(gallaryIntent, PICK_IMAGE_REQUEST);
+        // Android 12L (API level 32) 이하에서는 READ_EXTERNAL_STORAGE 권한을 요청합니다.
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                        REQUEST_STORAGE_PERMISSION);
+            } else {
+                // 권한이 이미 부여된 경우에 대한 처리를 여기에 추가합니다.
+                // 예: 파일 읽기 작업 수행
+                performReadOperation();
+            }
+        } else { // Android 13 (API level 33) 이상에서는 다른 권한을 요청합니다.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                requestMediaPermissions();
+            }
+        }
+
 
         // 갤러리 인텐트를 처리하는 ActivityResultLauncher 초기화
-        galleryLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    Log.d("SS1234", "Activity result received");
-                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                        Uri imageUri = result.getData().getData();
-                        if (imageUri != null) {
-                            Log.d("SS1234", "Selected image URI: " + imageUri.toString());
-                            try {
-                                scaleView.setImage(ImageSource.uri(imageUri));
-                            } catch (Exception e) {
-                                Log.e("SS1234", "Error setting image", e);
-                                Toast.makeText(this, "이미지를 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
-                            }
-                        } else {
-                            Log.d("SS1234", "Image URI is null");
-                            Toast.makeText(this, "선택한 이미지의 URI가 없습니다.", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        Log.d("SS1234", "Image selection failed or canceled");
-                        Toast.makeText(this, "이미지 선택에 실패했습니다.", Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-        saveFileToAppSpecificDirectory(this);
-        readFileFromAppSpecificDirectory(this);
-
-
+//        galleryLauncher = registerForActivityResult(
+//                new ActivityResultContracts.StartActivityForResult(),
+//                result -> {
+//                    Log.d("SS1234", "Activity result received");
+//                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+//                        Uri imageUri = result.getData().getData();
+//                        if (imageUri != null) {
+//                            Log.d("SS1234", "Selected image URI: " + imageUri.toString());
+//                            try {
+//                                scaleView.setImage(ImageSource.uri(imageUri));
+//                            } catch (Exception e) {
+//                                Log.e("SS1234", "Error setting image", e);
+//                                Toast.makeText(this, "이미지를 불러오는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
+//                            }
+//                        } else {
+//                            Log.d("SS1234", "Image URI is null");
+//                            Toast.makeText(this, "선택한 이미지의 URI가 없습니다.", Toast.LENGTH_SHORT).show();
+//                        }
+//                    } else {
+//                        Log.d("SS1234", "Image selection failed or canceled");
+//                        Toast.makeText(this, "이미지 선택에 실패했습니다.", Toast.LENGTH_SHORT).show();
+//                    }
+//                });
 
         // 원본 이미지 로드
         currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
@@ -444,37 +455,90 @@ public class MainActivity extends AppCompatActivity{
 
     }//onCreate
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    private String getPathFromUri(Uri uri) {
+        String[] projection = { MediaStore.Images.Media.DATA };
+        Cursor cursor = getContentResolver().query(uri, projection, null, null, null);
+        if (cursor != null) {
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            String path = cursor.getString(column_index);
+            cursor.close();
+            return path;
+        }
+        return null;
+    }
 
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.i("MainActivity", "Write External Storage permission has been granted.");
-                } else {
-                    Log.i("MainActivity", "Write External Storage permission was denied.");
-                }
-                break;
-            }
-            case REQUEST_CODE_OPEN_DOCUMENT: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.i("MainActivity", "REQUEST_CODE_OPEN_DOCUMENT permission has been granted.");
-                } else {
-                    Log.i("MainActivity", "REQUEST_CODE_OPEN_DOCUMENT permission was denied.");
-                }
-                break;
+    // Android 13 (API level 33) 이상에서 사용될 권한 요청 메서드
+    @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private void requestMediaPermissions() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_MEDIA_IMAGES,
+                            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED},
+                    REQUEST_STORAGE_PERMISSION);
+        } else {
+            // 권한이 이미 부여된 경우에 대한 처리를 여기에 추가합니다.
+            // 예: 미디어 파일 읽기 작업 수행
+            performMediaReadOperation();
+        }
+    }
+
+    // 권한 요청 결과 처리
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 권한이 부여됨
+            } else {
+                // 권한이 거부됨
+                Toast.makeText(this, "외부 저장소 접근 권한이 필요합니다.", Toast.LENGTH_SHORT).show();
             }
         }
+    }
 
-//        if (requestCode == STORAGE_PERMISSION_CODE) {
-//            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                openGallery();
-//            } else {
-//                Toast.makeText(this, "권한이 거부되었습니다.", Toast.LENGTH_SHORT).show();
+
+    // 파일 읽기 작업을 수행하는 메서드 예시
+    private void performReadOperation() {
+        // 파일 읽기 작업을 수행하는 코드를 여기에 추가합니다.
+        // 예: 외부 저장소에서 파일을 읽어오는 등의 작업
+        Toast.makeText(this, "1111111111111", Toast.LENGTH_SHORT).show();
+    }
+
+    // 미디어 파일 읽기 작업을 수행하는 메서드 예시
+    private void performMediaReadOperation() {
+        // 미디어 파일 읽기 작업을 수행하는 코드를 여기에 추가합니다.
+        // 예: 이미지, 비디오 등을 읽어오는 작업
+        Toast.makeText(this, "222222222222222", Toast.LENGTH_SHORT).show();
+    }
+
+//    @Override
+//    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+//
+//        switch (requestCode) {
+//            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE: {
+//                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                    Log.i("MainActivity", "Write External Storage permission has been granted.");
+//                } else {
+//                    Log.i("MainActivity", "Write External Storage permission was denied.");
+//                }
+//                break;
+//            }
+//            case REQUEST_CODE_OPEN_DOCUMENT: {
+//                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                    Log.i("MainActivity", "REQUEST_CODE_OPEN_DOCUMENT permission has been granted.");
+//                } else {
+//                    Log.i("MainActivity", "REQUEST_CODE_OPEN_DOCUMENT permission was denied.");
+//                }
+//                break;
 //            }
 //        }
-    }
+//    }
 
 //    private void handleImageUri(Uri selectedImageUri) {
 //        try{
@@ -485,20 +549,6 @@ public class MainActivity extends AppCompatActivity{
 //            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
 //        }
 //    }
-
-    // 파일을 앱 전용 디렉토리에 저장하기
-    public void saveFileToAppSpecificDirectory(Context context) {
-        String filename = "example.txt";
-        String fileContents = "Hello, World!";
-        FileOutputStream fos;
-        try {
-            fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
-            fos.write(fileContents.getBytes());
-            fos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     // 앱 전용 디렉토리에서 파일 읽기
     public String readFileFromAppSpecificDirectory(Context context) {
@@ -663,7 +713,9 @@ public class MainActivity extends AppCompatActivity{
 //        Intent intent = new Intent(MainActivity.this, mapFileListActivity.class);
 //        startActivityForResult(intent,REQUEST_PICK_IMAGE);
 
-        openGallery();
+//        openGallery();
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_IMAGE_PICK);
     }
 
     //CSV 파일 선택창
@@ -843,7 +895,7 @@ public class MainActivity extends AppCompatActivity{
         try {
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             intent.setType("image/*");
-            galleryLauncher.launch(intent);
+//            galleryLauncher.launch(intent);
             Log.d("SS1234", "Gallery intent launched");
         } catch (Exception e) {
             Log.e("SS1234", "Error launching gallery intent", e);
