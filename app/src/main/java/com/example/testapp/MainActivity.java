@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity{
     private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_IMAGE_PICK = 1;
+    private static final int PICK_CSV_FILE_REQUEST = 1;
     private static final int REQUEST_PERMISSION = 100;
     private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final String TEST = "test";
@@ -99,6 +100,8 @@ public class MainActivity extends AppCompatActivity{
     private Paint paint;
     private HashSet<String> readNfcContents = new HashSet<>();
     private Icon closestIcon = null;
+    String selectedImagePath = null;
+    private String mapImageName;
     //========
     List<Icon> icons = new ArrayList<>();
     //========
@@ -202,12 +205,7 @@ public class MainActivity extends AppCompatActivity{
         // 이미지 선택 시 전달된 데이터 가져오기
         if (getIntent() != null && getIntent().hasExtra("selected_image_path")) {
             String selectedImagePath = getIntent().getStringExtra("selected_image_path");
-            // 선택된 이미지 경로를 사용하여 원하는 작업 수행
-            Log.d("MainActivity", "Selected Image Path: " + selectedImagePath);
-
-            // 예시: 선택된 이미지를 ImageView에 표시
-//            scaleView.setImage(ImageSource.asset(selectedImagePath));
-//            Glide.with(this).load(selectedImagePath).into(scaleView);
+            mapImageName = selectedImagePath;
 
             // Glide를 사용하여 이미지 로드 및 설정
             Glide.with(this)
@@ -229,11 +227,10 @@ public class MainActivity extends AppCompatActivity{
         }
 
         // 원본 이미지 로드
-        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
-
+//        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
         // 원본 이미지를 화면에 표시합니다.
-        scaleView.setImage(ImageSource.bitmap(currentBitmap));
+//        scaleView.setImage(ImageSource.bitmap(currentBitmap));
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
         //지도 더블 탭 기능 막는 코드.
         scaleView.setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER);
@@ -271,7 +268,7 @@ public class MainActivity extends AppCompatActivity{
 //            readCsvAndDrawIcons();
 //            drawIcons();
 //        }
-
+//        selectCsvFile();
         scaleView.setOnTouchListener((view, motionEvent) -> {
 
             PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
@@ -512,9 +509,8 @@ public class MainActivity extends AppCompatActivity{
                 MediaStore.Images.Media.DISPLAY_NAME,
                 MediaStore.Images.Media.DATA
         };
-        Log.d("SS1234","projection : " + projection.length);
-        Cursor cursor = contentResolver.query(uri, projection, null, null, null);
 
+        Cursor cursor = contentResolver.query(uri, projection, null, null, null);
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
@@ -526,13 +522,20 @@ public class MainActivity extends AppCompatActivity{
                 String data = cursor.getString(dataColumn);
 
                 // 이 데이터를 사용하여 이미지 목록을 구성합니다.
-                Log.d("SS1234", "GalleryImage    ID: " + id + ", Name: " + name + ", Path: " + data);
+//                Log.d("SS1234", "GalleryImage    ID: " + id + ", Name: " + name + ", Path: " + data);
 
 
             }
             cursor.close();
         }
     }
+
+//    private void selectCsvFile() {
+//        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+//        intent.setType("text/csv");
+//        intent.addCategory(Intent.CATEGORY_OPENABLE);
+//        startActivityForResult(Intent.createChooser(intent, "Select CSV File"), PICK_CSV_FILE_REQUEST);
+//    }
 
 
     // 파일 읽기 작업을 수행하는 메서드 예시
@@ -710,13 +713,8 @@ public class MainActivity extends AppCompatActivity{
 
     //지도 파일 선택창
     public void onClickLandscapeOption1(View view) {
-//        Intent intent = new Intent(MainActivity.this, mapFileListActivity.class);
-//        startActivityForResult(intent,REQUEST_PICK_IMAGE);
-
-//        openGallery();
         Intent intent = new Intent(MainActivity.this, imageActivity.class);
         startActivity(intent);
-//        Toast.makeText(this, "지도 선택 개발중", Toast.LENGTH_SHORT).show();
     }
 
     //CSV 파일 선택창
@@ -752,47 +750,6 @@ public class MainActivity extends AppCompatActivity{
             toggleButton.setVisibility(View.INVISIBLE);
         }
     }
-
-    private void drawCircleOnImage(PointF point, String text) {
-        // Paint 객체를 초기화합니다.
-        if (paint == null) {
-            paint = new Paint();
-            paint.setColor(Color.RED);
-            paint.setStyle(Paint.Style.FILL);
-        }
-
-        Paint textPaint = new Paint();
-        textPaint.setColor(Color.BLACK);
-        textPaint.setTextSize(30);
-        textPaint.setStyle(Paint.Style.FILL);
-
-        // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
-        float currentScale = scaleView.getScale();
-        PointF currentCenter = scaleView.getCenter();
-
-        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
-        Bitmap mutableBitmap = currentBitmap.copy(Bitmap.Config.ARGB_8888, true);
-
-        // 캔버스를 생성하고 원본 이미지를 그립니다.
-        Canvas canvas = new Canvas(mutableBitmap);
-
-        // 좌표에 원을 그립니다.
-        canvas.drawCircle(point.x, point.y, 30, paint);
-
-        // 좌표에 텍스트를 그립니다.
-        canvas.drawText(text, point.x, point.y, textPaint);
-
-        // 수정된 이미지를 화면에 표시합니다.
-        runOnUiThread(() -> {
-            scaleView.setImage(ImageSource.bitmap(mutableBitmap));
-
-            // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
-            scaleView.setScaleAndCenter(currentScale, currentCenter);
-        });
-
-        // 현재 이미지를 저장합니다.
-        currentBitmap = mutableBitmap;
-    }//drawCircleOnImage
 
     @Override
     protected void onNewIntent(Intent intent) {
@@ -860,48 +817,52 @@ public class MainActivity extends AppCompatActivity{
         float currentScale = scaleView.getScale();
         PointF currentCenter = scaleView.getCenter();
 
-        // 원본 이미지를 수정 가능한 복사본으로 만듭니다.
-        Bitmap originalBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
-        Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
-        // 캔버스를 생성하고 원본 이미지를 그립니다.
-        Canvas canvas = new Canvas(mutableBitmap);
+        String selectedImagePath = getIntent().getStringExtra("selected_image_path");
+        Log.d("SS1234", "selectedImagePath : " + selectedImagePath);
 
-        for (Icon icon : icons) {
-            // 좌표에 원을 그립니다.
-            canvas.drawCircle(icon.point.x, icon.point.y, 30, paint);
+        Glide.with(this)
+                .downloadOnly()
+                .load(selectedImagePath)
+                .into(new CustomTarget<File>() {
+                    @Override
+                    public void onResourceReady(@NonNull File resource, @Nullable Transition<? super File> transition) {
+                        // 이미지 로드가 완료되면 BitmapFactory를 사용하여 Bitmap을 만듭니다.
+                        Bitmap originalBitmap = BitmapFactory.decodeFile(resource.getAbsolutePath());
+                        Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
 
-            // 좌표에 텍스트를 그립니다.
-            canvas.drawText(icon.text, icon.point.x - 40, icon.point.y + 15, textPaint);
-        }
+                        // 캔버스를 생성하고 원본 이미지를 그립니다.
+                        Canvas canvas = new Canvas(mutableBitmap);
 
-        // 수정된 이미지를 화면에 표시합니다.
-        runOnUiThread(() -> {
-            scaleView.setImage(ImageSource.bitmap(mutableBitmap));
+                        for (Icon icon : icons) {
+                            // 좌표에 원을 그립니다.
+                            canvas.drawCircle(icon.point.x, icon.point.y, 30, paint);
 
-            // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
-            scaleView.setScaleAndCenter(currentScale, currentCenter);
-        });
+                            // 좌표에 텍스트를 그립니다.
+                            canvas.drawText(icon.text, icon.point.x - 40, icon.point.y + 15, textPaint);
+                        }
 
-        // 현재 이미지를 저장합니다.
-        currentBitmap = mutableBitmap;
+                        // 수정된 이미지를 화면에 표시합니다.
+                        runOnUiThread(() -> {
+                            scaleView.setImage(ImageSource.bitmap(mutableBitmap));
+
+                            // 저장한 확대/축소 수준과 중심 좌표를 복원합니다.
+                            scaleView.setScaleAndCenter(currentScale, currentCenter);
+                        });
+
+                        // 현재 이미지를 저장합니다.
+                        currentBitmap = mutableBitmap;
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 이미지 로드가 취소될 때 처리할 내용
+                    }
+                });
     }//drawIcons
 
     private String getCurrentTimeStamp() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
         return sdf.format(new Date());
-    }
-
-    @SuppressLint("IntentReset")
-    private void openGallery() {
-        try {
-            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            intent.setType("image/*");
-//            galleryLauncher.launch(intent);
-            Log.d("SS1234", "Gallery intent launched");
-        } catch (Exception e) {
-            Log.e("SS1234", "Error launching gallery intent", e);
-            Toast.makeText(this, "갤러리를 여는 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
-        }
     }
 
 }// MainActivity.java
