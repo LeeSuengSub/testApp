@@ -1,15 +1,18 @@
 package com.example.testapp;
 
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.databinding.DataBindingUtil;
 import androidx.databinding.ViewDataBinding;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.testapp.adapter.MapFileAdapter;
@@ -23,6 +26,7 @@ import java.util.List;
 public class mapFileListActivity extends AppCompatActivity {
 
     ViewDataBinding binding;
+    private MapFileAdapter mapFileAdapter;
     private static String path = "/storage/emulated/0/Android/data/com.example.testapp/files/map/";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +47,7 @@ public class mapFileListActivity extends AppCompatActivity {
         if(recyclerView == null) {
             Log.e("SS1234", "RecyclerView is null");
         }else {
-            recyclerView.setLayoutManager(new LinearLayoutManager(this));
+            recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
 
             // 특정 폴더의 경로를 가져옵니다.
             dir = new File(path);
@@ -84,6 +88,38 @@ public class mapFileListActivity extends AppCompatActivity {
                     startActivity(intent);
                 }
             });
+        }
+    }
+
+    private void loadImagesFromGallery() {
+        // 여기에 이미지를 가져오는 코드를 추가합니다.
+        ContentResolver contentResolver = getContentResolver();
+        Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+        Log.d("SS1234","444444444444444444");
+        String[] projection = {
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.DATA
+        };
+        Log.d("SS1234","projection : " + projection.length);
+        Cursor cursor = contentResolver.query(uri, projection, null, null, null);
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
+                int nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME);
+                int dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+
+                long id = cursor.getLong(idColumn);
+                String name = cursor.getString(nameColumn);
+                String data = cursor.getString(dataColumn);
+
+                // 이 데이터를 사용하여 이미지 목록을 구성합니다.
+                Log.d("SS1234", "GalleryImage    ID: " + id + ", Name: " + name + ", Path: " + data);
+
+
+            }
+            cursor.close();
         }
     }
 
