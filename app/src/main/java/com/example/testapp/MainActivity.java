@@ -100,13 +100,12 @@ public class MainActivity extends AppCompatActivity{
     private Paint paint;
     private HashSet<String> readNfcContents = new HashSet<>();
     private Icon closestIcon = null;
-    String selectedImagePath = null;
+//    String selectedImagePath = null;
     private String mapImageName;
-    //========
     List<Icon> icons = new ArrayList<>();
     //========
-    // ActivityResultLauncher 선언
-//    private ActivityResultLauncher<Intent> galleryLauncher;
+    private long backpressedTime = 0;
+    //========
 
     private void checkAndRequestPermission(String permission, int requestCode) {
         if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -197,7 +196,7 @@ public class MainActivity extends AppCompatActivity{
         }
 
         if (allPermissionsGranted()) {
-            loadImagesFromGallery();
+//            loadImagesFromGallery();
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
@@ -262,6 +261,10 @@ public class MainActivity extends AppCompatActivity{
                 toggleButton.setVisibility(View.INVISIBLE);
             }
         });
+
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN;
+        decorView.setSystemUiVisibility(uiOptions);
 
         // CSV 파일이 있다면, CSV 파일을 읽어서 아이콘을 그립니다.
 //        if (csvFile.exists()) {
@@ -452,7 +455,6 @@ public class MainActivity extends AppCompatActivity{
     }
 
 
-
     private String getPathFromUri(Uri uri) {
         String[] projection = { MediaStore.Images.Media.DATA };
         Cursor cursor = getContentResolver().query(uri, projection, null, null, null);
@@ -493,8 +495,9 @@ public class MainActivity extends AppCompatActivity{
             if (allPermissionsGranted()) {
                 loadImagesFromGallery();
             } else {
-                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show();
-                finish();
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_MEDIA_IMAGES},
+                        REQUEST_CODE_PERMISSIONS);
             }
         }
     }
@@ -577,8 +580,9 @@ public class MainActivity extends AppCompatActivity{
     private void saveIconsToCsv() {
 
         try {
-
             String filename = getCurrentTimeStamp() + ".csv";
+            File file = new File(getFilesDir(), filename);
+            String path = file.getAbsolutePath();
             FileOutputStream fos = openFileOutput(filename, MODE_APPEND);
             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
 
@@ -818,7 +822,6 @@ public class MainActivity extends AppCompatActivity{
         PointF currentCenter = scaleView.getCenter();
 
         String selectedImagePath = getIntent().getStringExtra("selected_image_path");
-        Log.d("SS1234", "selectedImagePath : " + selectedImagePath);
 
         Glide.with(this)
                 .downloadOnly()
@@ -861,8 +864,17 @@ public class MainActivity extends AppCompatActivity{
     }//drawIcons
 
     private String getCurrentTimeStamp() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
-        return sdf.format(new Date());
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+        return dateFormat.format(new Date());
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        Toast.makeText(this, "어플이 종료됩니다.", Toast.LENGTH_SHORT).show();
+        finishAffinity();
+        System.runFinalization();
+        System.exit(0);
     }
 
 }// MainActivity.java

@@ -52,6 +52,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
                 Singleton singleton = Singleton.getInstance();
                 singleton.setSelectedMapFile(str[str.length -1]);
                 context.startActivity(intent);
+
             }
         });
     }
