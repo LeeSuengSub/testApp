@@ -76,6 +76,8 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity{
 
     private String path = "/storage/emulated/0/Android/data/com.example.testapp/files/";
+    private String csvPath = "/storage/emulated/0/Download/SKVIEW/";
+    private File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_IMAGE_PICK = 1;
@@ -423,7 +425,7 @@ public class MainActivity extends AppCompatActivity{
                                     // CSV 파일을 다시 씁니다.
                                     try {
 //                                        FileWriter writer = new FileWriter("nfcLight.csv", false); // false for overwrite mode
-                                        FileWriter writer = new FileWriter(Singleton.getInstance().getSelectedCsvFile(), false); // false for overwrite mode
+                                        FileWriter writer = new FileWriter(csvPath+Singleton.getInstance().getSelectedCsvFile(), false); // false for overwrite mode
                                         for (Icon icon : icons) {
                                             writer.append(icon.text + "," + Math.round(icon.point.x) + "," + Math.round(icon.point.y) + "\n");
                                         }
@@ -606,6 +608,9 @@ public class MainActivity extends AppCompatActivity{
 
     private void readIconsFromCsv() {
         try {
+
+            Log.d("SS1234","CSV : " + Singleton.getInstance().getSelectedCsvFile());
+//            String filePath = downloadDir +"/SKVIEW/"+ Singleton.getInstance().getSelectedCsvFile();
             FileInputStream fis = openFileInput(Singleton.getInstance().getSelectedCsvFile());
             InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
             BufferedReader reader = new BufferedReader(isr);
@@ -671,7 +676,7 @@ public class MainActivity extends AppCompatActivity{
             drawIcons();
         }
 
-        pathText.setText(selectedCsvFileName + " / " + selectedMapFileName);
+        pathText.setText(selectedMapFileName + " / " + selectedCsvFileName);
     }
 
     @Override
@@ -792,7 +797,7 @@ public class MainActivity extends AppCompatActivity{
         try {
             File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 //            File csvFile = new File(dir, "nfcLight.csv");
-            File csvFile = new File(dir, Singleton.getInstance().getSelectedCsvFile());
+            File csvFile = new File(dir, csvPath + Singleton.getInstance().getSelectedCsvFile());
             FileWriter writer = new FileWriter(csvFile, true); // true for append mode
             writer.append(nfcText + "," + imageCoord.x + "," + imageCoord.y + "\n");
             writer.flush();

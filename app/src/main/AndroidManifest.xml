@@ -43,8 +43,6 @@
             android:exported="true"
             android:parentActivityName=".MainActivity">
         </activity>
-        <activity android:name=".mapFileListActivity"/>
-        <activity android:name=".CsvFileListActivity"/>
         <activity android:name=".CsvActivity"
             android:parentActivityName=".MainActivity"/>
     </application>

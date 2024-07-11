@@ -48,8 +48,8 @@ public class CsvAdapter extends RecyclerView.Adapter<CsvAdapter.CsvViewHolder> {
                 // Singleton을 사용하여 선택된 파일 이름 저장
                 String[] str = csvPath.split("/");
                 Singleton singleton = Singleton.getInstance();
-                singleton.setSelectedMapFile(str[str.length - 1]);
-
+                singleton.setSelectedCsvFile(str[str.length -1]);
+//                singleton.setSelectedCsvFile(csvPath);
                 context.startActivity(intent);
             }
         });

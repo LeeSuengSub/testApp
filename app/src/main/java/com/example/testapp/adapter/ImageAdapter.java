@@ -48,7 +48,6 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
                 intent.putExtra("selected_image_path", imagePath);
 
                 String[] str = imagePath.split("/");
-
                 Singleton singleton = Singleton.getInstance();
                 singleton.setSelectedMapFile(str[str.length -1]);
                 context.startActivity(intent);

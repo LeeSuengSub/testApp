@@ -34,6 +34,10 @@ public class CsvActivity extends AppCompatActivity {
         csvAdapter = new CsvAdapter(this, csvPaths);
         recyclerView.setAdapter(csvAdapter);
 
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN;
+        decorView.setSystemUiVisibility(uiOptions);
+
         ImageButton backButton = findViewById(R.id.backButton);
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -44,7 +48,7 @@ public class CsvActivity extends AppCompatActivity {
         });
 
         // 다운로드 폴더 경로 설정
-        String downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() +"/SKVIEW_관리자";
+        String downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() +"/SKVIEW";
 
         // 다운로드 폴더에서 CSV 파일 로드
         loadCsvFilesFromDirectory(downloadFolderPath);
