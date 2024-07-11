@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
+
     <!-- Devices running Android 12L (API level 32) or lower  -->
 <!--    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />-->
     <!-- Devices running Android 13 (API level 33) or higher -->
@@ -39,10 +40,13 @@
             </intent-filter>
         </activity>
         <activity android:name=".imageActivity"
-            android:exported="true">
+            android:exported="true"
+            android:parentActivityName=".MainActivity">
         </activity>
         <activity android:name=".mapFileListActivity"/>
         <activity android:name=".CsvFileListActivity"/>
+        <activity android:name=".CsvActivity"
+            android:parentActivityName=".MainActivity"/>
     </application>
 
 

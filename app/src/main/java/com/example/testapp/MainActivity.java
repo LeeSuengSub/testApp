@@ -723,7 +723,7 @@ public class MainActivity extends AppCompatActivity{
 
     //CSV 파일 선택창
     public void onClickLandscapeOption2(View view) {
-        Intent intent = new Intent(MainActivity.this, CsvFileListActivity.class);
+        Intent intent = new Intent(MainActivity.this, CsvActivity.class);
         startActivity(intent);
     }
 
