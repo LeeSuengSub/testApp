@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity{
 
     private String path = "/storage/emulated/0/Android/data/com.example.testapp/files/";
     private String csvPath = "/storage/emulated/0/Download/SKVIEW/";
+//    private String csvPath = "_storage_emulated_0_Download_SKVIEW_";
     private File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
@@ -547,51 +548,40 @@ public class MainActivity extends AppCompatActivity{
     private void performReadOperation() {
         // 파일 읽기 작업을 수행하는 코드를 여기에 추가합니다.
         // 예: 외부 저장소에서 파일을 읽어오는 등의 작업
-        Toast.makeText(this, "1111111111111", Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "1111111111111", Toast.LENGTH_SHORT).show();
     }
 
     // 미디어 파일 읽기 작업을 수행하는 메서드 예시
     private void performMediaReadOperation() {
         // 미디어 파일 읽기 작업을 수행하는 코드를 여기에 추가합니다.
         // 예: 이미지, 비디오 등을 읽어오는 작업
-        Toast.makeText(this, "222222222222222", Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "222222222222222", Toast.LENGTH_SHORT).show();
     }
-
-
-    // 앱 전용 디렉토리에서 파일 읽기
-//    public String readFileFromAppSpecificDirectory(Context context) {
-//        String filename = "example.txt";
-//        FileInputStream fis;
-//        StringBuilder stringBuilder = new StringBuilder();
-//        try {
-//            fis = context.openFileInput(filename);
-//            InputStreamReader inputStreamReader = new InputStreamReader(fis);
-//            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-//            String line;
-//            while ((line = bufferedReader.readLine()) != null) {
-//                stringBuilder.append(line);
-//            }
-//            fis.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        return stringBuilder.toString();
-//    }
-
 
     private void saveIconsToCsv() {
 
         try {
+//            String filename = getCurrentTimeStamp() + ".csv";
+//            File file = new File(getFilesDir(), filename);
+//            String path = file.getAbsolutePath();
+//            FileOutputStream fos = openFileOutput(csvPath+"/"+filename, MODE_APPEND);
+//            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+
             String filename = getCurrentTimeStamp() + ".csv";
-            File file = new File(getFilesDir(), filename);
-            String path = file.getAbsolutePath();
-            FileOutputStream fos = openFileOutput(filename, MODE_APPEND);
+            String directoryPath = "/storage/emulated/0/Download/SKVIEW";
+            File directory = new File(directoryPath);
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
+
+            File file = new File(directory, filename);
+            FileOutputStream fos = new FileOutputStream(file);
             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
 
             for (Icon icon : icons) {
                 String text = icon.text;
-                float x = icon.point.x;
-                float y = icon.point.y;
+                int x = (int) icon.point.x;
+                int y = (int) icon.point.y;
                 String line = text + "," + x + "," + y + "\n";
                 osw.write(line);
             }
@@ -606,12 +596,30 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
+    /*
     private void readIconsFromCsv() {
         try {
 
             Log.d("SS1234","CSV : " + Singleton.getInstance().getSelectedCsvFile());
+
+//            //=======
+//            String filename = getCurrentTimeStamp() + "_" +Singleton.getInstance().getSelectedMapFile() + ".csv";
+//            String directoryPath = "/storage/emulated/0/Download/SKVIEW";
+//            File directory = new File(directoryPath);
+//            if (!directory.exists()) {
+//                directory.mkdirs();
+//            }
+//
+//            File file = new File(directory, filename);
+//            FileOutputStream fos = new FileOutputStream(file);
+//            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+//            //==========
+
+            File folder = new File(Environment.getExternalStorageDirectory() + "/SKVIEW/");
+            File file = new File(folder, Singleton.getInstance().getSelectedCsvFile());
+
 //            String filePath = downloadDir +"/SKVIEW/"+ Singleton.getInstance().getSelectedCsvFile();
-            FileInputStream fis = openFileInput(Singleton.getInstance().getSelectedCsvFile());
+            FileInputStream fis = openFileInput(folder +File.separator+Singleton.getInstance().getSelectedCsvFile());
             InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
             BufferedReader reader = new BufferedReader(isr);
             String line;
@@ -640,6 +648,52 @@ public class MainActivity extends AppCompatActivity{
             e.printStackTrace();
             Toast.makeText(this, "CSV 파일을 읽는 중에 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+     */
+
+    private void readIconsFromCsv() {
+
+        Log.d("SS1234","CSV : " + Singleton.getInstance().getSelectedCsvFile());
+
+        String selectedCsvFile = Singleton.getInstance().getSelectedCsvFile();
+        String folderPath = "SKVIEW"; // 외부 저장소의 폴더 경로
+        String fileName = selectedCsvFile.replace("/", "_"); // 경로 구분자를 '_'로 대체
+
+
+        // 외부 저장소의 폴더와 파일 경로 설정
+        File file = new File(csvPath, selectedCsvFile);
+
+        try (FileInputStream fis = new FileInputStream(file);
+             InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
+             BufferedReader reader = new BufferedReader(isr)) {
+
+            StringBuilder stringBuilder = new StringBuilder();
+            String line;
+//            while ((line = reader.readLine()) != null) {
+//                stringBuilder.append(line).append("\n");
+//            }
+
+            // 읽은 내용 출력
+            System.out.println("File content:");
+            System.out.println(stringBuilder.toString());
+
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 3) {
+                    String text = parts[0];
+                    float x = Float.parseFloat(parts[1]);
+                    float y = Float.parseFloat(parts[2]);
+                    Log.d("FileRead", "text: " + text + ", x: " + x + ", y: " + y);
+                    icons.add(new Icon(new PointF(x, y), text));
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
@@ -869,7 +923,7 @@ public class MainActivity extends AppCompatActivity{
     }//drawIcons
 
     private String getCurrentTimeStamp() {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
         return dateFormat.format(new Date());
     }
 
