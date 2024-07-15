@@ -45,11 +45,11 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
             public void onClick(View v) {
                 // 이미지 경로를 MainActivity로 전달
                 Intent intent = new Intent(context, MainActivity.class);
-                intent.putExtra("selected_image_path", imagePath);
 
                 String[] str = imagePath.split("/");
                 Singleton singleton = Singleton.getInstance();
                 singleton.setSelectedMapFile(str[str.length -1]);
+                singleton.setSelectedMapFilePath(imagePath);
                 context.startActivity(intent);
 
             }

@@ -4,6 +4,7 @@ public class Singleton {
     private static Singleton instance = null;
     private String selectedCsvFile;
     private String selectedMapFile;
+    private String selectedMapFilePath;
 
     private Singleton() {
     }
@@ -29,5 +30,13 @@ public class Singleton {
 
     public void setSelectedMapFile(String selectedMapFile) {
         this.selectedMapFile = selectedMapFile;
+    }
+
+    public String getSelectedMapFilePath() {
+        return selectedMapFilePath;
+    }
+
+    public void setSelectedMapFilePath(String selectedMapFilePath) {
+        this.selectedMapFilePath = selectedMapFilePath;
     }
 }

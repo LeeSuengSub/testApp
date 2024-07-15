@@ -40,7 +40,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -77,16 +76,11 @@ public class MainActivity extends AppCompatActivity{
 
     private String path = "/storage/emulated/0/Android/data/com.example.testapp/files/";
     private String csvPath = "/storage/emulated/0/Download/SKVIEW/";
-//    private String csvPath = "_storage_emulated_0_Download_SKVIEW_";
-    private File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_IMAGE_PICK = 1;
-    private static final int PICK_CSV_FILE_REQUEST = 1;
-    private static final int REQUEST_PERMISSION = 100;
     private static final int REQUEST_STORAGE_PERMISSION = 1;
     private static final String TEST = "test";
-    private ActivityResultLauncher<Intent> activityResultLauncher;
     private SubsamplingScaleImageView scaleView;
     private FloatingActionButton fab; //아이콘 배치 버튼
     private TextView nfcTitle;
@@ -103,12 +97,9 @@ public class MainActivity extends AppCompatActivity{
     private Paint paint;
     private HashSet<String> readNfcContents = new HashSet<>();
     private Icon closestIcon = null;
-//    String selectedImagePath = null;
     private String mapImageName;
+    private String csvFileName;
     List<Icon> icons = new ArrayList<>();
-    //========
-    private long backpressedTime = 0;
-    //========
 
     private void checkAndRequestPermission(String permission, int requestCode) {
         if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -121,17 +112,6 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-
-//        if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null) {
-//            Uri selectedImageUri = data.getData();
-//            if (selectedImageUri != null) {
-//                String imagePath = getPathFromUri(selectedImageUri);
-//                if (imagePath != null) {
-//                    scaleView.setImage(ImageSource.uri(imagePath));
-//                }
-//            }
-//        }
 
         if (requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK && data != null) {
             try {
@@ -159,7 +139,7 @@ public class MainActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        fab= findViewById(R.id.fab);
+        fab = findViewById(R.id.fab);
         nfcTitle = findViewById(R.id.nfcTitle);
         scaleView = findViewById(R.id.imageView);
         toggleButton = findViewById(R.id.toggleButton);
@@ -205,14 +185,14 @@ public class MainActivity extends AppCompatActivity{
         }
 
         // 이미지 선택 시 전달된 데이터 가져오기
-        if (getIntent() != null && getIntent().hasExtra("selected_image_path")) {
-            String selectedImagePath = getIntent().getStringExtra("selected_image_path");
-            mapImageName = selectedImagePath;
+        Singleton singleton = Singleton.getInstance();
+        if (singleton.getSelectedMapFilePath() != null) {
+            mapImageName = singleton.getSelectedMapFilePath();
 
             // Glide를 사용하여 이미지 로드 및 설정
             Glide.with(this)
                     .downloadOnly()
-                    .load(selectedImagePath)
+                    .load(mapImageName)
                     .into(new CustomTarget<File>() {
                         @Override
                         public void onResourceReady(@NonNull File resource, @Nullable Transition<? super File> transition) {
@@ -226,20 +206,16 @@ public class MainActivity extends AppCompatActivity{
                             // 이미지 로드가 취소될 때 처리할 내용
                         }
                     });
+
         }
 
-        // 원본 이미지 로드
-//        currentBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test_jpg);
-        // 원본 이미지를 화면에 표시합니다.
-//        scaleView.setImage(ImageSource.bitmap(currentBitmap));
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
-
         //지도 더블 탭 기능 막는 코드.
         scaleView.setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER);
         scaleView.setDoubleTapZoomDpi(0);
 
         //스마트폰에 NFC가 없거나 꺼져있는 경우
-        if(nfcAdapter == null || !nfcAdapter.isEnabled()) {
+        if (nfcAdapter == null || !nfcAdapter.isEnabled()) {
             Toast.makeText(this, "NFC기능이 꺼져있습니다.", Toast.LENGTH_SHORT).show();
         }
 
@@ -252,14 +228,14 @@ public class MainActivity extends AppCompatActivity{
             fab.setImageResource(isCheck ? android.R.drawable.ic_delete : android.R.drawable.ic_lock_lock);
 
             //isCheck에 따라 수정/삭제 기능 -> 활성화/비활성화 해야함.
-            if(isDelete) {
+            if (isDelete) {
                 isDelete = false;
                 nfcTitle.setText("====");
                 nfcTitle.setTextColor(Color.BLACK);
                 nfcTitle.setTypeface(Typeface.DEFAULT);
             }
 
-            if(selfCheck) {
+            if (selfCheck) {
                 selfCheck = false;
                 toggleButton.setVisibility(View.INVISIBLE);
             }
@@ -269,12 +245,6 @@ public class MainActivity extends AppCompatActivity{
         int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN;
         decorView.setSystemUiVisibility(uiOptions);
 
-        // CSV 파일이 있다면, CSV 파일을 읽어서 아이콘을 그립니다.
-//        if (csvFile.exists()) {
-//            readCsvAndDrawIcons();
-//            drawIcons();
-//        }
-//        selectCsvFile();
         scaleView.setOnTouchListener((view, motionEvent) -> {
 
             PointF viewCoord = new PointF(motionEvent.getX(), motionEvent.getY());
@@ -536,13 +506,6 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-//    private void selectCsvFile() {
-//        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-//        intent.setType("text/csv");
-//        intent.addCategory(Intent.CATEGORY_OPENABLE);
-//        startActivityForResult(Intent.createChooser(intent, "Select CSV File"), PICK_CSV_FILE_REQUEST);
-//    }
-
 
     // 파일 읽기 작업을 수행하는 메서드 예시
     private void performReadOperation() {
@@ -558,8 +521,10 @@ public class MainActivity extends AppCompatActivity{
 //        Toast.makeText(this, "222222222222222", Toast.LENGTH_SHORT).show();
     }
 
+    /*
+     * csv파일에 아이콘 좌표값과 내용 저장
+     */
     private void saveIconsToCsv() {
-
         try {
 //            String filename = getCurrentTimeStamp() + ".csv";
 //            File file = new File(getFilesDir(), filename);
@@ -596,62 +561,11 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
+
+
     /*
-    private void readIconsFromCsv() {
-        try {
-
-            Log.d("SS1234","CSV : " + Singleton.getInstance().getSelectedCsvFile());
-
-//            //=======
-//            String filename = getCurrentTimeStamp() + "_" +Singleton.getInstance().getSelectedMapFile() + ".csv";
-//            String directoryPath = "/storage/emulated/0/Download/SKVIEW";
-//            File directory = new File(directoryPath);
-//            if (!directory.exists()) {
-//                directory.mkdirs();
-//            }
-//
-//            File file = new File(directory, filename);
-//            FileOutputStream fos = new FileOutputStream(file);
-//            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
-//            //==========
-
-            File folder = new File(Environment.getExternalStorageDirectory() + "/SKVIEW/");
-            File file = new File(folder, Singleton.getInstance().getSelectedCsvFile());
-
-//            String filePath = downloadDir +"/SKVIEW/"+ Singleton.getInstance().getSelectedCsvFile();
-            FileInputStream fis = openFileInput(folder +File.separator+Singleton.getInstance().getSelectedCsvFile());
-            InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
-            BufferedReader reader = new BufferedReader(isr);
-            String line;
-
-            icons.clear(); // 아이콘 리스트 초기화
-
-            Log.d("FileRead", "내용을 성공적으로 읽었습니다.");
-
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 3) {
-                    String text = parts[0];
-                    float x = Float.parseFloat(parts[1]);
-                    float y = Float.parseFloat(parts[2]);
-                    Log.d("FileRead", "text: " + text + ", x: " + x + ", y: " + y);
-                    icons.add(new Icon(new PointF(x, y), text));
-                }
-            }
-
-//            drawIcons();
-
-            reader.close();
-            isr.close();
-            fis.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "CSV 파일을 읽는 중에 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
-        }
-    }
-
+     * csv파일을 읽고 화면에 표시.
      */
-
     private void readIconsFromCsv() {
 
         Log.d("SS1234","CSV : " + Singleton.getInstance().getSelectedCsvFile());
@@ -692,7 +606,6 @@ public class MainActivity extends AppCompatActivity{
         } catch (IOException e) {
             e.printStackTrace();
         }
-
 
     }
 
@@ -880,8 +793,7 @@ public class MainActivity extends AppCompatActivity{
         float currentScale = scaleView.getScale();
         PointF currentCenter = scaleView.getCenter();
 
-        String selectedImagePath = getIntent().getStringExtra("selected_image_path");
-
+        String selectedImagePath = Singleton.getInstance().getSelectedMapFilePath();
         Glide.with(this)
                 .downloadOnly()
                 .load(selectedImagePath)

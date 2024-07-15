@@ -43,13 +43,11 @@ public class CsvAdapter extends RecyclerView.Adapter<CsvAdapter.CsvViewHolder> {
             public void onClick(View v) {
                 // .csv 파일 경로를 MainActivity로 전달
                 Intent intent = new Intent(context, MainActivity.class);
-                intent.putExtra("selected_csv_path", csvPath);
 
                 // Singleton을 사용하여 선택된 파일 이름 저장
                 String[] str = csvPath.split("/");
                 Singleton singleton = Singleton.getInstance();
                 singleton.setSelectedCsvFile(str[str.length -1]);
-//                singleton.setSelectedCsvFile(csvPath);
                 context.startActivity(intent);
             }
         });
