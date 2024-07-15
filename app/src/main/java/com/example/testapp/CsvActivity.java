@@ -34,6 +34,13 @@ public class CsvActivity extends AppCompatActivity {
         csvAdapter = new CsvAdapter(this, csvPaths);
         recyclerView.setAdapter(csvAdapter);
 
+        String directoryPath = "/storage/emulated/0/Download/nfcTag";
+        File directory = new File(directoryPath);
+
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
         View decorView = getWindow().getDecorView();
         int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN;
         decorView.setSystemUiVisibility(uiOptions);
@@ -48,7 +55,7 @@ public class CsvActivity extends AppCompatActivity {
         });
 
         // 다운로드 폴더 경로 설정
-        String downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() +"/SKVIEW";
+        String downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() +"/nfcTag";
 
         // 다운로드 폴더에서 CSV 파일 로드
         loadCsvFilesFromDirectory(downloadFolderPath);
@@ -71,7 +78,7 @@ public class CsvActivity extends AppCompatActivity {
             }
             csvAdapter.notifyDataSetChanged();
         } else {
-            Toast.makeText(this, "No .csv files found in download folder", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No .csv files found in folder", Toast.LENGTH_SHORT).show();
         }
     }
 }

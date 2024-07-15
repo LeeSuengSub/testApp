@@ -1,4 +1,3 @@
 <resources>
-    <string name="app_name">testApp</string>
-    <string name="csv_path">/storage/emulated/0/Download/NfcTag/</string>
+    <string name="app_name">LightingNfc</string>
 </resources>

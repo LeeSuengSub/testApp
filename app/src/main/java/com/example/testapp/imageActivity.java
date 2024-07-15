@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ImageButton;
@@ -62,7 +63,24 @@ public class imageActivity extends AppCompatActivity {
                 MediaStore.Images.Media.DATA
         };
 
-        Cursor cursor = contentResolver.query(uri, projection, null, null, null);
+//        Cursor cursor = contentResolver.query(uri, projection, null, null, null);
+//
+//        if (cursor != null) {
+//            while (cursor.moveToNext()) {
+//                int dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+//                String imagePath = cursor.getString(dataColumn);
+//                imagePaths.add(imagePath);
+//            }
+//            cursor.close();
+//            imageAdapter.notifyDataSetChanged();
+//        }
+
+        // Specify the selection criteria for the Download folder
+        String downloadFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS+"/nfcTag").getPath();
+        String selection = MediaStore.Images.Media.DATA + " LIKE ?";
+        String[] selectionArgs = new String[] { "%" + downloadFolderPath + "%" };
+
+        Cursor cursor = contentResolver.query(uri, projection, selection, selectionArgs, null);
 
         if (cursor != null) {
             while (cursor.moveToNext()) {
@@ -73,5 +91,6 @@ public class imageActivity extends AppCompatActivity {
             cursor.close();
             imageAdapter.notifyDataSetChanged();
         }
+
     }
 }

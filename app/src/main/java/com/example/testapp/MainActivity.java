@@ -15,6 +15,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -27,7 +28,9 @@ import android.nfc.tech.Ndef;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.text.InputFilter;
 import android.util.Log;
@@ -72,15 +75,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity {
 
     private String path = "/storage/emulated/0/Android/data/com.example.testapp/files/";
-    private String csvPath = "/storage/emulated/0/Download/SKVIEW/";
+    private String csvPath = "/storage/emulated/0/Download/nfcTag/";
+    //    private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
+    private static final int REQUEST_CODE_MANAGE_FILES = 1;
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_IMAGE_PICK = 1;
     private static final int REQUEST_STORAGE_PERMISSION = 1;
-    private static final String TEST = "test";
+    private static final String TEST = "00000";
     private SubsamplingScaleImageView scaleView;
     private FloatingActionButton fab; //아이콘 배치 버튼
     private TextView nfcTitle;
@@ -95,6 +100,7 @@ public class MainActivity extends AppCompatActivity{
     private boolean isDelete = false; //삭제
     private Bitmap currentBitmap;
     private Paint paint;
+    private Paint strokePaint;
     private HashSet<String> readNfcContents = new HashSet<>();
     private Icon closestIcon = null;
     private String mapImageName;
@@ -148,6 +154,20 @@ public class MainActivity extends AppCompatActivity{
         //권한 확인.
 //        checkAndRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
 //        checkAndRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, REQUEST_CODE_MANAGE_FILES);
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE_MANAGE_FILES);
+            }
+        }
+
 
         // 외부 저장소 접근 권한 확인 및 요청
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -216,7 +236,9 @@ public class MainActivity extends AppCompatActivity{
 
         //스마트폰에 NFC가 없거나 꺼져있는 경우
         if (nfcAdapter == null || !nfcAdapter.isEnabled()) {
-            Toast.makeText(this, "NFC기능이 꺼져있습니다.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "NFC를 활성화해주세요.", Toast.LENGTH_LONG).show();
+            Intent intent = new Intent(Settings.ACTION_NFC_SETTINGS);
+            startActivity(intent);
         }
 
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -254,18 +276,18 @@ public class MainActivity extends AppCompatActivity{
                 // NFC 태그의 내용을 가져옵니다.
                 String nfcText = nfcTitle.getText().toString();
 
-                if(Singleton.getInstance().getSelectedMapFile() == null) {
+                if (Singleton.getInstance().getSelectedMapFile() == null) {
                     Toast.makeText(this, "도면을 선택해주세요.", Toast.LENGTH_SHORT).show();
                     return false;
                 }
 
                 //테스트를 위한 코드
-                if(nfcText.equals("====")) {
+                if (nfcText.equals("====")) {
                     nfcText = TEST;
                 }
 
                 //NFC 태그의 내용이 없는 경우
-                if(nfcText.isEmpty() || nfcText.equals("====")) {
+                if (nfcText.isEmpty() || nfcText.equals("====")) {
                     Toast.makeText(this, "NFC 태그를 인식해주세요.", Toast.LENGTH_SHORT).show();
                     return false;
                 }
@@ -281,7 +303,7 @@ public class MainActivity extends AppCompatActivity{
             }
 
             //아이콘의 좌표이동
-            if(selfCheck && toggleButton.getText().equals("좌표") && motionEvent.getAction() == MotionEvent.ACTION_MOVE) {
+            if (selfCheck && toggleButton.getText().equals("좌표") && motionEvent.getAction() == MotionEvent.ACTION_MOVE) {
                 // 터치 지점에서 가장 가까운 아이콘을 찾습니다.
                 float closestDistance = Float.MAX_VALUE;
 
@@ -310,8 +332,8 @@ public class MainActivity extends AppCompatActivity{
 
                 return true;
 
-            //아이콘의 텍스트 수정
-            }else if (toggleButton.getText().equals("텍스트") && toggleButton.isShown() && motionEvent.getAction() == MotionEvent.ACTION_UP) {
+                //아이콘의 텍스트 수정
+            } else if (toggleButton.getText().equals("텍스트") && toggleButton.isShown() && motionEvent.getAction() == MotionEvent.ACTION_UP) {
                 // 터치 지점에서 가장 가까운 아이콘을 찾습니다.
                 float closestDistance = Float.MAX_VALUE;
 
@@ -333,7 +355,7 @@ public class MainActivity extends AppCompatActivity{
                     editText.setFilters(filters);
                     // dialog를 생성하여 수정할 내용을 입력할 공간 확보.
                     AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(closestIcon.text+" 수정")
+                            .setTitle(closestIcon.text + " 수정")
                             .setMessage("수정할 내용을 입력해주세요.")
                             .setView(editText)
                             .setPositiveButton("OK", null)
@@ -396,7 +418,7 @@ public class MainActivity extends AppCompatActivity{
                                     // CSV 파일을 다시 씁니다.
                                     try {
 //                                        FileWriter writer = new FileWriter("nfcLight.csv", false); // false for overwrite mode
-                                        FileWriter writer = new FileWriter(csvPath+Singleton.getInstance().getSelectedCsvFile(), false); // false for overwrite mode
+                                        FileWriter writer = new FileWriter(csvPath + Singleton.getInstance().getSelectedCsvFile(), false); // false for overwrite mode
                                         for (Icon icon : icons) {
                                             writer.append(icon.text + "," + Math.round(icon.point.x) + "," + Math.round(icon.point.y) + "\n");
                                         }
@@ -429,7 +451,7 @@ public class MainActivity extends AppCompatActivity{
 
 
     private String getPathFromUri(Uri uri) {
-        String[] projection = { MediaStore.Images.Media.DATA };
+        String[] projection = {MediaStore.Images.Media.DATA};
         Cursor cursor = getContentResolver().query(uri, projection, null, null, null);
         if (cursor != null) {
             int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
@@ -479,7 +501,7 @@ public class MainActivity extends AppCompatActivity{
         // 여기에 이미지를 가져오는 코드를 추가합니다.
         ContentResolver contentResolver = getContentResolver();
         Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-        Log.d("SS1234","444444444444444444");
+        Log.d("SS1234", "444444444444444444");
         String[] projection = {
                 MediaStore.Images.Media._ID,
                 MediaStore.Images.Media.DISPLAY_NAME,
@@ -532,9 +554,39 @@ public class MainActivity extends AppCompatActivity{
 //            FileOutputStream fos = openFileOutput(csvPath+"/"+filename, MODE_APPEND);
 //            OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
 
-            String filename = getCurrentTimeStamp() + ".csv";
-            String directoryPath = "/storage/emulated/0/Download/SKVIEW";
+//            String filename = getCurrentTimeStamp() + ".csv";
+            String directoryPath = "/storage/emulated/0/Download/nfcTag";
             File directory = new File(directoryPath);
+
+
+            String baseFilename = getCurrentTimeStamp();
+            String filename = baseFilename + ".csv";
+            File fileToCheck = new File(directoryPath, filename);
+
+//            int count = 1;
+//
+//            if(!filename.contains("_")){
+//                filename = baseFilename + "_" + count + ".csv";
+//                fileToCheck = new File(directoryPath, filename);
+//            }
+//
+//            if(filename.contains("_")) {
+//                String subStr = filename.replace(".csv","");
+//                String[] str = subStr.split("_");
+//
+//                if(Integer.parseInt(str[str.length-1]) == count) {
+//                    count++;
+//                    filename = baseFilename + "_" + (Integer.parseInt(str[str.length-1])+1) + ".csv";
+//                    fileToCheck = new File(directoryPath, filename);
+//                }
+//            }
+
+//            if(fileToCheck.exists()) {
+//                filename = baseFilename + "_" + count + ".csv";
+//                fileToCheck = new File(directoryPath, filename);
+//                count++;
+//            }
+
             if (!directory.exists()) {
                 directory.mkdirs();
             }
@@ -559,8 +611,7 @@ public class MainActivity extends AppCompatActivity{
             e.printStackTrace();
             Toast.makeText(this, "CSV 파일을 저장하는 중에 오류가 발생했습니다.", Toast.LENGTH_SHORT).show();
         }
-    }
-
+    }//saveIconsToCsv
 
 
     /*
@@ -568,7 +619,7 @@ public class MainActivity extends AppCompatActivity{
      */
     private void readIconsFromCsv() {
 
-        Log.d("SS1234","CSV : " + Singleton.getInstance().getSelectedCsvFile());
+        Log.d("SS1234", "CSV : " + Singleton.getInstance().getSelectedCsvFile());
 
         String selectedCsvFile = Singleton.getInstance().getSelectedCsvFile();
         String folderPath = "SKVIEW"; // 외부 저장소의 폴더 경로
@@ -638,7 +689,7 @@ public class MainActivity extends AppCompatActivity{
         String selectedCsvFileName = singleton.getSelectedCsvFile();
         String selectedMapFileName = singleton.getSelectedMapFile();
 
-        if(selectedCsvFileName != null) {
+        if (selectedCsvFileName != null) {
             readIconsFromCsv();
             drawIcons();
         }
@@ -656,6 +707,51 @@ public class MainActivity extends AppCompatActivity{
         finish();
     }
 
+//    private String readNfcTag(Intent intent) {
+//        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction()) ||
+//                NfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction()) ||
+//                NfcAdapter.ACTION_TECH_DISCOVERED.equals(intent.getAction())) {
+//            Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+//            Ndef ndef = Ndef.get(tag);
+//
+//            if (ndef != null) {
+//                try {
+//                    ndef.connect();
+//                    NdefMessage ndefMessage = ndef.getNdefMessage();
+//
+//                    if (ndefMessage != null) {
+//                        NdefRecord[] records = ndefMessage.getRecords();
+//                        if (records != null && records.length > 0) {
+//                            NdefRecord record = records[0];
+//                            String payload = new String(Arrays.copyOfRange(record.getPayload(), 3, record.getPayload().length), StandardCharsets.UTF_8);
+//                            Toast.makeText(this, "NFC 데이터: " + payload, Toast.LENGTH_LONG).show();
+//                        } else {
+//                            Toast.makeText(this, "NDEF 기록이 없습니다.", Toast.LENGTH_LONG).show();
+//                        }
+//                    } else {
+//                        Toast.makeText(this, "NDEF 메시지가 비어 있습니다.", Toast.LENGTH_LONG).show();
+//                    }
+//                } catch (IOException | FormatException e) {
+//                    e.printStackTrace();
+//                    Toast.makeText(this, "NDEF 태그 처리 중 오류 발생: " + e.getMessage(), Toast.LENGTH_LONG).show();
+//                } catch (NullPointerException e) {
+//                    e.printStackTrace();
+//                    Toast.makeText(this, "NDEF 메시지가 없습니다. 다시 태그해주세요.", Toast.LENGTH_SHORT).show();
+//                } finally {
+//                    try {
+//                        ndef.close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            } else {
+//                Toast.makeText(this, "NDEF 태그가 아닙니다.", Toast.LENGTH_LONG).show();
+//            }
+//        }
+//        return null;
+//    }
+
+    /** nfc를 태그하여 내용 읽기 */
     private String readNfcTag(Intent intent) {
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
             Ndef ndef = Ndef.get((Tag)intent.getParcelableExtra(NfcAdapter.EXTRA_TAG));
@@ -672,10 +768,10 @@ public class MainActivity extends AppCompatActivity{
                     }
                 } catch (IOException | FormatException e) {
                     e.printStackTrace();
-                } catch (NullPointerException e){
+                }catch (NullPointerException e){
                     e.printStackTrace();
                     Toast.makeText(this, "다시 태그해주세요.", Toast.LENGTH_SHORT).show();
-                } finally {
+                }finally {
                     try {
                         ndef.close();
                     } catch (IOException e) {
@@ -711,6 +807,11 @@ public class MainActivity extends AppCompatActivity{
             nfcTitle.setTextColor(Color.BLACK);
             nfcTitle.setTypeface(Typeface.DEFAULT);
         }
+
+        if(isCheck) {
+            isCheck = false;
+            fab.setImageResource(isCheck ? android.R.drawable.ic_delete : android.R.drawable.ic_lock_lock);
+        }
     }
 
     //삭제 버튼.
@@ -725,15 +826,22 @@ public class MainActivity extends AppCompatActivity{
             selfCheck = false;
             toggleButton.setVisibility(View.INVISIBLE);
         }
+
+        if(isCheck) {
+            isCheck = false;
+            fab.setImageResource(isCheck ? android.R.drawable.ic_delete : android.R.drawable.ic_lock_lock);
+        }
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
 
-        setIntent(intent);
+//        setIntent(intent);
 
         String nfcText = readNfcTag(intent);
+
+        Log.d("SS1234", "nfcText : " + nfcText);
 
         // NFC 태그의 내용이 이미 읽힌 내용인지 확인합니다.
         if (readNfcContents.contains(nfcText)) {
@@ -745,9 +853,12 @@ public class MainActivity extends AppCompatActivity{
         // NFC 태그의 내용을 가져오지 못한 경우
         if (nfcText == null) {
             Toast.makeText(this, "NFC 태그를 읽는데 실패했습니다.", Toast.LENGTH_SHORT).show();
-            nfcTitle.setText(nfcText);
+            nfcTitle.setText(null);
             return;
         }
+
+        //nfc태그한 내용울 표시.
+        nfcTitle.setText(nfcText);
 
         // 테스트를 위한 부분.
         // 테스트가 끝나면 지워야 함.
@@ -756,22 +867,13 @@ public class MainActivity extends AppCompatActivity{
             return;
         }
 
-        // 터치 이벤트가 끝났을 때
-        PointF viewCoord = new PointF(scaleView.getWidth() / 2, scaleView.getHeight() / 2);
-        PointF imageCoord = scaleView.viewToSourceCoord(viewCoord);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                nfcTitle.setText("====");
+            }
+        },10000);
 
-        // 좌표와 NFC의 내용을 CSV파일에 저장
-        try {
-            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-//            File csvFile = new File(dir, "nfcLight.csv");
-            File csvFile = new File(dir, csvPath + Singleton.getInstance().getSelectedCsvFile());
-            FileWriter writer = new FileWriter(csvFile, true); // true for append mode
-            writer.append(nfcText + "," + imageCoord.x + "," + imageCoord.y + "\n");
-            writer.flush();
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }//onNewIntent
 
     private void drawIcons() {
@@ -781,12 +883,17 @@ public class MainActivity extends AppCompatActivity{
             paint = new Paint();
             paint.setColor(Color.RED);
             paint.setStyle(Paint.Style.FILL);
+
+            strokePaint = new Paint();
+            strokePaint.setColor(Color.BLACK);
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeWidth(2);
         }
 
         // 텍스트를 그리기 위한 Paint 객체를 생성합니다.
         Paint textPaint = new Paint();
         textPaint.setColor(Color.BLACK);
-        textPaint.setTextSize(50);
+        textPaint.setTextSize(16);
         textPaint.setStyle(Paint.Style.FILL);
 
         // 현재의 확대/축소 수준과 중심 좌표를 저장합니다.
@@ -808,11 +915,18 @@ public class MainActivity extends AppCompatActivity{
                         Canvas canvas = new Canvas(mutableBitmap);
 
                         for (Icon icon : icons) {
+                            // 타원의 위치와 크기를 정의합니다.
+                            RectF rectF = new RectF(icon.point.x -25, icon.point.y -15, icon.point.x + 25, icon.point.y +15); // left, top, right, bottom 값은 적절히 설정해야 합니다.
+
                             // 좌표에 원을 그립니다.
-                            canvas.drawCircle(icon.point.x, icon.point.y, 30, paint);
+//                            canvas.drawCircle(icon.point.x, icon.point.y, 15, paint);
+
+                            // 좌표에 직사각형을 그립니다.
+                            canvas.drawRect(rectF, paint);
+                            canvas.drawRect(rectF, strokePaint);
 
                             // 좌표에 텍스트를 그립니다.
-                            canvas.drawText(icon.text, icon.point.x - 40, icon.point.y + 15, textPaint);
+                            canvas.drawText(icon.text, icon.point.x - 22, icon.point.y + 8, textPaint);
                         }
 
                         // 수정된 이미지를 화면에 표시합니다.
@@ -825,7 +939,7 @@ public class MainActivity extends AppCompatActivity{
 
                         // 현재 이미지를 저장합니다.
                         currentBitmap = mutableBitmap;
-                    }
+                    }//onResourceReady
 
                     @Override
                     public void onLoadCleared(@Nullable Drawable placeholder) {
