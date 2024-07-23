@@ -28,12 +28,12 @@ import android.nfc.tech.Ndef;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.text.InputFilter;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -79,18 +79,17 @@ public class MainActivity extends AppCompatActivity {
 
     private String path = "/storage/emulated/0/Android/data/com.example.testapp/files/";
     private String csvPath = "/storage/emulated/0/Download/nfcTag/";
-    //    private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final String[] REQUIRED_PERMISSIONS = {Manifest.permission.READ_EXTERNAL_STORAGE};
     private static final int REQUEST_CODE_MANAGE_FILES = 1;
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_IMAGE_PICK = 1;
     private static final int REQUEST_STORAGE_PERMISSION = 1;
-    private static final String TEST = "00000";
     private SubsamplingScaleImageView scaleView;
     private FloatingActionButton fab; //아이콘 배치 버튼
     private TextView nfcTitle;
     private TextView pathText;
     private ScaleGestureDetector scaleGestureDetector;
+    private GestureDetector gestureDetector;
     private float scaleFactor = 1.0f;
     private PendingIntent pendingIntent;
     private NfcAdapter nfcAdapter; //NFC
@@ -105,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
     private Icon closestIcon = null;
     private String mapImageName;
     private String csvFileName;
+    private String nfcReadText;
     List<Icon> icons = new ArrayList<>();
 
     private void checkAndRequestPermission(String permission, int requestCode) {
@@ -155,6 +155,8 @@ public class MainActivity extends AppCompatActivity {
 //        checkAndRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
 //        checkAndRequestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
 
+        scaleView.setMinScale(1.0f);
+        scaleView.setMaxScale(5.5f);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -245,6 +247,22 @@ public class MainActivity extends AppCompatActivity {
         pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
         scaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
+        // GestureDetector 설정
+        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                // 더블탭 이벤트를 무시하고 아무 작업도 하지 않음
+                return false;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                scaleView.setTranslationX(scaleView.getTranslationX() - distanceX);
+                scaleView.setTranslationY(scaleView.getTranslationY() - distanceY);
+                return true;
+            }
+        });
+
         fab.setOnClickListener(view -> {
             isCheck = !isCheck;
             fab.setImageResource(isCheck ? android.R.drawable.ic_delete : android.R.drawable.ic_lock_lock);
@@ -282,22 +300,22 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 //테스트를 위한 코드
-                if (nfcText.equals("====")) {
-                    nfcText = TEST;
-                }
+//                if (nfcText.equals("====")) {
+//                    nfcText = TEST;
+//                    return false;
+//                }
 
                 //NFC 태그의 내용이 없는 경우
                 if (nfcText.isEmpty() || nfcText.equals("====")) {
-                    Toast.makeText(this, "NFC 태그를 인식해주세요.", Toast.LENGTH_SHORT).show();
                     return false;
                 }
 
-
                 // CSV 파일을 읽고 화면에 아이콘을 표시합니다.
-//                readCsvAndDrawIcons();
                 icons.add(new Icon(imageCoord, nfcText));
                 drawIcons();
                 saveIconsToCsv();
+
+                nfcTitle.setText("====");
 
                 return false;
             }
@@ -316,7 +334,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // 가장 가까운 아이콘이 선택 영역 내에 있다면, 그 아이콘을 손가락의 움직임에 따라 움직입니다.
-                if (closestDistance < 100) {
+                if (closestDistance < 70) {
                     PointF newImageCoord = scaleView.viewToSourceCoord(new PointF(motionEvent.getX(), motionEvent.getY()));
 
                     // 손가락이 움직인 거리를 계산합니다.
@@ -434,8 +452,8 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return false;
             }
-
-            return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
+            return super.onTouchEvent(motionEvent);
+//            return false; // onTouch 이벤트를 여기서 끝내지 않고, 다음 이벤트로 넘깁니다.
         });
 
     }//onCreate
@@ -558,34 +576,13 @@ public class MainActivity extends AppCompatActivity {
             String directoryPath = "/storage/emulated/0/Download/nfcTag";
             File directory = new File(directoryPath);
 
+            String[] mapFile = Singleton.getInstance().getSelectedMapFile().split("\\.");
 
-            String baseFilename = getCurrentTimeStamp();
+            String baseFilename = getCurrentTimeStamp() + "_" + mapFile[0];
             String filename = baseFilename + ".csv";
+
             File fileToCheck = new File(directoryPath, filename);
 
-//            int count = 1;
-//
-//            if(!filename.contains("_")){
-//                filename = baseFilename + "_" + count + ".csv";
-//                fileToCheck = new File(directoryPath, filename);
-//            }
-//
-//            if(filename.contains("_")) {
-//                String subStr = filename.replace(".csv","");
-//                String[] str = subStr.split("_");
-//
-//                if(Integer.parseInt(str[str.length-1]) == count) {
-//                    count++;
-//                    filename = baseFilename + "_" + (Integer.parseInt(str[str.length-1])+1) + ".csv";
-//                    fileToCheck = new File(directoryPath, filename);
-//                }
-//            }
-
-//            if(fileToCheck.exists()) {
-//                filename = baseFilename + "_" + count + ".csv";
-//                fileToCheck = new File(directoryPath, filename);
-//                count++;
-//            }
 
             if (!directory.exists()) {
                 directory.mkdirs();
@@ -599,6 +596,10 @@ public class MainActivity extends AppCompatActivity {
                 String text = icon.text;
                 int x = (int) icon.point.x;
                 int y = (int) icon.point.y;
+
+                x = (x / 10) * 10;
+                y = (y / 10) * 10;
+
                 String line = text + "," + x + "," + y + "\n";
                 osw.write(line);
             }
@@ -622,7 +623,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d("SS1234", "CSV : " + Singleton.getInstance().getSelectedCsvFile());
 
         String selectedCsvFile = Singleton.getInstance().getSelectedCsvFile();
-        String folderPath = "SKVIEW"; // 외부 저장소의 폴더 경로
+        String folderPath = "nfcTag"; // 외부 저장소의 폴더 경로
         String fileName = selectedCsvFile.replace("/", "_"); // 경로 구분자를 '_'로 대체
 
 
@@ -640,8 +641,7 @@ public class MainActivity extends AppCompatActivity {
 //            }
 
             // 읽은 내용 출력
-            System.out.println("File content:");
-            System.out.println(stringBuilder.toString());
+            Log.d("SS1234","File content : " + stringBuilder.toString());
 
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
@@ -650,6 +650,13 @@ public class MainActivity extends AppCompatActivity {
                     float x = Float.parseFloat(parts[1]);
                     float y = Float.parseFloat(parts[2]);
                     Log.d("FileRead", "text: " + text + ", x: " + x + ", y: " + y);
+
+                    if(nfcReadText != null && nfcReadText.equals(text)) {
+                        Toast.makeText(this, "csv파일에 중복되는 값이 있습니다.", Toast.LENGTH_SHORT).show();
+                        nfcTitle.setText("====");
+                        return;
+                    }
+
                     icons.add(new Icon(new PointF(x, y), text));
                 }
             }
@@ -662,7 +669,7 @@ public class MainActivity extends AppCompatActivity {
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         private static final float MIN_SCALE_FACTOR = 1.0f; // 최소 스케일링 팩터
-        private static final float MAX_SCALE_FACTOR = 5.0f; // 최대 스케일링 팩터
+        private static final float MAX_SCALE_FACTOR = 5.5f; // 최대 스케일링 팩터
 
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
@@ -704,7 +711,7 @@ public class MainActivity extends AppCompatActivity {
         if (nfcAdapter != null) {
             nfcAdapter.disableForegroundDispatch(this);
         }
-        finish();
+//        finish();
     }
 
 //    private String readNfcTag(Intent intent) {
@@ -770,6 +777,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }catch (NullPointerException e){
                     e.printStackTrace();
+                    nfcTitle.setText("====");
                     Toast.makeText(this, "다시 태그해주세요.", Toast.LENGTH_SHORT).show();
                 }finally {
                     try {
@@ -841,6 +849,8 @@ public class MainActivity extends AppCompatActivity {
 
         String nfcText = readNfcTag(intent);
 
+        nfcReadText = nfcText;
+
         Log.d("SS1234", "nfcText : " + nfcText);
 
         // NFC 태그의 내용이 이미 읽힌 내용인지 확인합니다.
@@ -863,16 +873,9 @@ public class MainActivity extends AppCompatActivity {
         // 테스트를 위한 부분.
         // 테스트가 끝나면 지워야 함.
         if(nfcTitle.equals("====")) {
-            nfcTitle.setText(TEST);
+//            nfcTitle.setText(TEST);
             return;
         }
-
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                nfcTitle.setText("====");
-            }
-        },10000);
 
     }//onNewIntent
 
